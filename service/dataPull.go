@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"main/driver"
-	. "main/model"
+	"main/model"
 	"main/utils"
 	"time"
 
@@ -23,22 +23,22 @@ type DataGatewayApi interface { //数据抽取接口
 	//数据计算接口
 	Calculater(data interface{}) (interface{}, error)
 	//告警过滤接口
-	Filter(data PropertyMessage) (interface{}, error)
+	Filter(data model.PropertyMessage) (interface{}, error)
 	//数据存储接口
-	LoaderMessage(data PropertyMessage) (interface{}, error)
+	LoaderMessage(data model.PropertyMessage) (interface{}, error)
 	//数据存储接口
-	LoaderAlarm(data AlarmMessage) (interface{}, error)
+	LoaderAlarm(data model.AlarmMessage) (interface{}, error)
 	//数据存储接口
 	Push(interface{}, string) bool
 }
 
 type DataGateway struct {
-	Device Device
+	Device model.Device
 }
 
 type PropertyChan struct {
-	PropertyMessage PropertyMessage
-	Device          Device
+	PropertyMessage model.PropertyMessage
+	Device          model.Device
 }
 
 func (gateway *DataGateway) Calculater(data interface{}) (interface{}, error) {
@@ -48,16 +48,16 @@ func (gateway *DataGateway) Calculater(data interface{}) (interface{}, error) {
 		logrus.Errorf("Function_Calc is null,device id=%s", device.Key)
 		return data, errors.New("function is null")
 	}
-	function, ok := device.Product.FunctionConfigs[Function_Calc]
+	function, ok := device.Product.FunctionConfigs[model.Function_Calc]
 	if !ok {
 		logrus.Errorf("Function_Calc is null,device id=%s", device.Key)
 		return data, errors.New("Function_Calc is null")
 	}
-	logrus.Debugf("Function_Calc funtion name=%s", Function_Calc)
+	logrus.Debugf("Function_Calc funtion name=%s", model.Function_Calc)
 	return utils.ExecJS(function.Function, function.Key, data)
 }
 
-func (gateway *DataGateway) Filter(data PropertyMessage) ([]interface{}, error) {
+func (gateway *DataGateway) Filter(data model.PropertyMessage) ([]interface{}, error) {
 	logrus.Debugf("Filter,message id = %s", data.MessageId)
 	device := gateway.Device
 	if len(device.Product.AlarmConfigs) == 0 {
@@ -80,7 +80,7 @@ func (gateway *DataGateway) Filter(data PropertyMessage) ([]interface{}, error) 
 			}
 		}
 		if hasAlarm {
-			alarms = append(alarms, AlarmMessage{SN: "", DeviceId: device.Key, MessageId: utils.GetUUID(),
+			alarms = append(alarms, model.AlarmMessage{SN: "", DeviceId: device.Key, MessageId: utils.GetUUID(),
 				Timestamp: time.Now().Unix(), Title: config.Name, Message: config.Message, Properties: poprs})
 		}
 	}
@@ -88,13 +88,13 @@ func (gateway *DataGateway) Filter(data PropertyMessage) ([]interface{}, error) 
 
 }
 
-func (gateway *DataGateway) LoaderMessage(data PropertyMessage) (bool, error) {
+func (gateway *DataGateway) LoaderMessage(data model.PropertyMessage) (bool, error) {
 	logrus.Debugf("save prop,message id = %s", data.MessageId)
 	return true, nil
 
 }
 
-func (gateway *DataGateway) LoaderAlarm(data AlarmMessage) (bool, error) {
+func (gateway *DataGateway) LoaderAlarm(data model.AlarmMessage) (bool, error) {
 	logrus.Debugf("save alarm,message id = %s", data.MessageId)
 	return true, nil
 
@@ -107,7 +107,7 @@ func Push(data interface{}, router string) bool {
 var deviceThreads map[string]bool = make(map[string]bool)
 
 //设备状态
-var deviceProps map[string]PropertyMessage = make(map[string]PropertyMessage)
+var deviceProps map[string]model.PropertyMessage = make(map[string]model.PropertyMessage)
 
 /**
  *开启所有属性获取及事件监听
@@ -143,7 +143,7 @@ func StopPull() {
 	}
 }
 
-func StartGatewayPull(gateway GatewayConfig) {
+func StartGatewayPull(gateway model.GatewayConfig) {
 	logrus.Infof("StartGatewayPull GetGateway %s", gateway.Key)
 	devices, ok := GetDevices(gateway.Key)
 	if !ok {
@@ -156,7 +156,7 @@ func StartGatewayPull(gateway GatewayConfig) {
 
 }
 
-func StopGatewayPull(gateway GatewayConfig) bool {
+func StopGatewayPull(gateway model.GatewayConfig) bool {
 	logrus.Infof("StopGatewayPull GetGateway %s", gateway.Key)
 	devices, ok := GetDevices(gateway.Key)
 	if !ok {
@@ -169,7 +169,7 @@ func StopGatewayPull(gateway GatewayConfig) bool {
 	return true
 }
 
-func StartDevicePull(gateway GatewayConfig, device Device) {
+func StartDevicePull(gateway model.GatewayConfig, device model.Device) {
 	logrus.Infof("StartDevicePull device %s", device.Key)
 	deviceThreads[device.Key] = true
 	driver, ok := driver.GetDriver(gateway, device)
@@ -180,13 +180,13 @@ func StartDevicePull(gateway GatewayConfig, device Device) {
 	ExecPull(driver, device)
 }
 
-func StopDevicePull(gateway GatewayConfig, device Device) bool {
+func StopDevicePull(gateway model.GatewayConfig, device model.Device) bool {
 	logrus.Infof("StopDevicePull device %s", device.Key)
 	delete(deviceThreads, device.Key)
 	return true
 }
 
-func ExecPull(driver driver.Driver, device Device) {
+func ExecPull(driver driver.Driver, device model.Device) {
 	if st, ok := deviceThreads[device.Key]; !ok || !st {
 		logrus.Infof("Stop ExecPull device %s", device.Key)
 		return
@@ -211,7 +211,7 @@ func ExecPull(driver driver.Driver, device Device) {
 	}
 	elapsed := time.Since(start)
 	logrus.Debug("ExecPull执行完成耗时：", elapsed)
-	tmp, ok := data.(PropertyMessage)
+	tmp, ok := data.(model.PropertyMessage)
 	if ok {
 		propMessChan <- PropertyChan{tmp, device}
 	}
@@ -220,14 +220,14 @@ func ExecPull(driver driver.Driver, device Device) {
 	logrus.Debug("下一次执行")
 }
 
-func ExecCalc(data PropertyMessage, device Device) {
+func ExecCalc(data model.PropertyMessage, device model.Device) {
 	start := time.Now() // 获取当前时间
 	dataGateway := &DataGateway{Device: device}
 	res, err := dataGateway.Calculater(data)
 	if err != nil {
 		logrus.Error("Calculater error.", err)
 	}
-	tmpP, ok := res.(PropertyMessage)
+	tmpP, ok := res.(model.PropertyMessage)
 	if !ok {
 		logrus.Error("calc error")
 		return
@@ -249,7 +249,7 @@ func ExecCalc(data PropertyMessage, device Device) {
 	}
 
 	for _, alarm := range alarms {
-		tmpA, ok := alarm.(AlarmMessage)
+		tmpA, ok := alarm.(model.AlarmMessage)
 		if !ok {
 			logrus.Error("alarm is null")
 		}
@@ -260,7 +260,7 @@ func ExecCalc(data PropertyMessage, device Device) {
 	logrus.Info("ExecCalc执行完成耗时：", elapsed)
 }
 
-func HasChange(device Device, old PropertyMessage, cur PropertyMessage) bool {
+func HasChange(device model.Device, old model.PropertyMessage, cur model.PropertyMessage) bool {
 	if len(device.Product.Items) == 0 {
 		return true
 	}

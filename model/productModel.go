@@ -20,49 +20,25 @@ type Product struct {
 	AlarmConfigs     []AlarmConfig             `json:"alarmSettings"`
 	FunctionConfigs  map[string]FunctionConfig `json:"functionConfigs"`
 }
-type ModelModbus struct {
-	Items []ItemConfigModbus `json:"items"`
-}
-type ModelOPCUA struct {
-	Items []ItemConfigOPC `json:"items"`
-}
 
 /**物模型定义**/
-type ItemConfigModbus struct {
+type ItemConfig struct {
 	Key            string `json:"key"`
 	Name           string `json:"name"`
-	OperaterType   string `json:"operaterType"`
-	Address        string `json:"address"`
+	OperaterType   string `json:"operaterType"` //modbus
+	Address        string `json:"address"`      //modbus
+	Source         string `json:"source"`
+	NodeId         string `json:"nodeId"` //opc ua
 	DataType       string `json:"dataType"`
 	Unit           string `json:"unit"`
 	Scale          string `json:"scale"`
-	ZoomFactor     string `json:"zoomFactor"`
-	ExchangeHL     bool   `json:"exchangeHL"`
-	ExchangeOrder  string `json:"exchangeOrder"`
-	DataReportType string `json:"dataReportType"`
+	StepSize       string `json:"stepSize"`
+	ZoomFactor     string `json:"zoomFactor"`     //modbus
+	ExchangeHL     bool   `json:"exchangeHL"`     //modbus
+	ExchangeOrder  string `json:"exchangeOrder"`  //modbus
+	DataReportType string `json:"dataReportType"` //modbus
+	RW             string `json:"rw"`
 	Desc           string `json:"desc"`
-}
-type ItemConfigOPC struct {
-	Key      string `json:"key"`
-	Name     string `json:"name"`
-	NodeId   string `json:"nodeId"`
-	DataType string `json:"dataType"`
-	Unit     string `json:"unit"`
-	Scale    string `json:"scale"`
-	StepSize string `json:"stepSize"`
-	RW       string `json:"rw"`
-	Desc     string `json:"desc"`
-}
-type ItemConfig struct {
-	Key      string `json:"key"`
-	Name     string `json:"name"`
-	Source   string `json:"source"`
-	DataType string `json:"dataType"`
-	Unit     string `json:"unit"`
-	Scale    string `json:"scale"`
-	StepSize string `json:"stepSize"`
-	RW       string `json:"rw"`
-	Desc     string `json:"desc"`
 }
 
 /**操作定义**/
@@ -95,7 +71,7 @@ type AlarmConfig struct {
 	Level      string            `json:"level"`
 	Conditions []Condition       `json:"conditions"`
 	Operations []OperationConfig `json:"operations"`
-	Message    string             `json:"messae"`
+	Message    string            `json:"messae"`
 }
 type Condition struct {
 	Key      string      `json:"key"`

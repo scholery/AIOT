@@ -40,68 +40,68 @@ type ItemConfig struct {
 }
 
 type ItemDataType struct {
-	RW   string            `json:"rw"` //读写标志
-	Type DataType          `json:"type"`
-	Unit string            `json:"unit"`
-	Min  string            `json:"min"`
-	Max  string            `json:"max"`
-	Step string            `json:"step"`
-	Dict map[string]string `json:"dict"`
+	RW   string            `json:"rw"`   //读写标志
+	Type DataType          `json:"type"` //数据类型
+	Unit string            `json:"unit"` //单位
+	Min  string            `json:"min"`  //最小值
+	Max  string            `json:"max"`  //最大值
+	Step string            `json:"step"` //变化步长
+	Dict map[string]string `json:"dict"` //枚举项
 }
 
 /**操作定义**/
 type OperationConfig struct {
 	Key       string      `json:"key"`
 	Name      string      `json:"name"`
-	Inputs    []Parameter `json:"inputs"`
-	ApiConfig ApiConfig   `json:"apiConfig"`
+	Inputs    []Parameter `json:"inputs"`    //输入参数
+	ApiConfig ApiConfig   `json:"apiConfig"` //接口配置
 	Desc      string      `json:"desc"`
 }
 
 type Parameter struct {
-	Key   string `json:"key"`
-	Name  string `json:"name"`
-	Type  string `json:"type"`
-	Value string `json:"value"`
+	Key      string   `json:"key"`
+	Name     string   `json:"name"`
+	DataType DataType `json:"dataType"` //数据类型
+	Value    string   `json:"value"`
 }
 
 type ApiConfig struct {
 	Key    string `json:"key"`
 	Name   string `json:"name"`
 	Value  string `json:"value"`
-	Method string `json:"mthod"`
+	Method string `json:"mthod"` //方式，get、post
 }
 
 /**告警定义**/
 type AlarmConfig struct {
 	Key        string            `json:"key"`
 	Name       string            `json:"name"`
-	Level      string            `json:"level"`
-	Type       string            `json:"type"`
-	Conditions []Condition       `json:"conditions"`
-	Operations []OperationConfig `json:"operations"`
+	Level      string            `json:"level"`      //级别
+	Type       string            `json:"type"`       //类型，事件、告警
+	Conditions []Condition       `json:"conditions"` //条件
+	Operations []OperationConfig `json:"operations"` //操作
 	Message    string            `json:"messae"`
 }
 type Condition struct {
 	Key      string      `json:"key"`
 	Name     string      `json:"name"`
-	DataType string      `json:"dataType"`
+	DataType DataType    `json:"dataType"` //数据类型
 	Compare  string      `json:"compare"`
 	Value    interface{} `json:"vaue"`
 }
 type FunctionConfig struct {
-	Key      string `json:"key"`
-	Name     string `json:"name"`
-	Function string `json:"function"`
+	Key      string `json:"key"`      //主键
+	Name     string `json:"name"`     //名称
+	Function string `json:"function"` //函数定义
 }
 type GatewayConfig struct {
 	Key        string               `json:"key"`
 	Name       string               `json:"name"`
-	Protocol   string               `json:"protocol"`
-	Ip         string               `json:"ip"`
-	Port       int                  `json:"port"`
-	Parameters []Parameter          `json:"parameters"`
-	ApiConfigs map[string]ApiConfig `json:"apiConfigs"`
+	Protocol   string               `json:"protocol"`   //协议，http、modbus、opc ua、mqtt、websocket、。。。
+	Ip         string               `json:"ip"`         //ip
+	Port       int                  `json:"port"`       //端口
+	Parameters []Parameter          `json:"parameters"` //入参配置
+	ApiConfigs map[string]ApiConfig `json:"apiConfigs"` //接口配置
 	Desc       string               `json:"desc"`
 }
 

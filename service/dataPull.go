@@ -83,7 +83,7 @@ func (gateway *DataGateway) FilterAlarm(data model.PropertyMessage) ([]interface
 			match := utils.MatchContidion(data, condition)
 			hasAlarm = hasAlarm || match
 			if match {
-				poprs = append(poprs, fmt.Sprintf("%s(%d %s %s)", condition.Name, data.Properties[condition.Key].Value, condition.Compare, condition.Value))
+				poprs = append(poprs, fmt.Sprintf("%s(%v %s %v)", condition.Name, data.Properties[condition.Key].Value, condition.Compare, condition.Value))
 			}
 		}
 		if hasAlarm {

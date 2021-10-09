@@ -41,9 +41,9 @@ func GetProduct(key string) (model.Product, bool) {
 					console.log("hahah length=",data.data.length);
 					//return data.data[0];
 					if(data.data[10].deviceStatus == '离线'){
-						data.data[10].deviceStatus = "0";
+						data.data[10].deviceStatus = 0;
 					}else{
-						data.data[10].deviceStatus = "1";
+						data.data[10].deviceStatus = 1;
 					}
 					return data;
 				}`
@@ -55,8 +55,8 @@ func GetProduct(key string) (model.Product, bool) {
 		model.Function_Calc: {Key: model.Function_Calc, Name: "数据计算", Function: calc}}
 
 	operations := []model.OperationConfig{}
-	conditions := []model.Condition{{Key: "deviceStatus", Name: "设备状态", DataType: "string", Compare: "=", Value: "0"}}
-	conditions1 := []model.Condition{{Key: "deviceStatus", Name: "设备状态", DataType: "string", Compare: "=", Value: "1"}}
+	conditions := []model.Condition{{Key: "deviceStatus", Name: "设备状态", DataType: model.Int32, Compare: "=", Value: 0}}
+	conditions1 := []model.Condition{{Key: "deviceStatus", Name: "设备状态", DataType: model.Int32, Compare: "=", Value: 1}}
 
 	alarmConfigs := []model.AlarmConfig{{Key: "offline", Name: "设备离线", Level: "1", Type: "event", Conditions: conditions, Operations: operations, Message: "设备离线"},
 		{Key: "online", Name: "设备上线", Level: "1", Type: "event", Conditions: conditions1, Message: "设备上线"}}

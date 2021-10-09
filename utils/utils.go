@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"main/model"
 	"math"
 	"strconv"
@@ -25,18 +26,22 @@ func PropCompareEQ(val1 interface{}, val2 interface{}, dataType model.ItemDataTy
 	noChange := false
 	switch dataType.Type {
 	case model.Int32:
-		v1, ok1 := val1.(int)
-		v2, ok2 := val2.(int)
+		v1 := fmt.Sprintf("%d", val1)
+		v2 := fmt.Sprintf("%d", val2)
+		t1, ok1 := strconv.Atoi(v1)
+		t2, ok2 := strconv.Atoi(v2)
 		s, err := strconv.Atoi(dataType.Step)
-		if ok1 && ok2 && err == nil {
-			noChange = Abs(v1-v2) <= s
+		if ok1 == nil && ok2 == nil && err == nil {
+			noChange = Abs(t1-t2) <= s
 		}
 	case model.Float:
-		v1, ok1 := val1.(float64)
-		v2, ok2 := val2.(float64)
-		s, err := strconv.ParseFloat(dataType.Step, 32)
-		if ok1 && ok2 && err == nil {
-			noChange = math.Abs(float64(v1-v2)) <= s
+		v1 := fmt.Sprintf("%f", val1)
+		v2 := fmt.Sprintf("%f", val2)
+		t1, ok1 := strconv.ParseFloat(v1, 64)
+		t2, ok2 := strconv.ParseFloat(v2, 64)
+		s, err := strconv.ParseFloat(dataType.Step, 64)
+		if ok1 == nil && ok2 == nil && err == nil {
+			noChange = math.Abs(float64(t1-t2)) <= s
 		}
 	}
 	return !noChange
@@ -64,36 +69,32 @@ func MatchContidion(prop model.PropertyMessage, condition model.Condition) bool 
 	return match
 }
 
-func Compare(val1 interface{}, val2 interface{}, dataType string) int {
+func Compare(val1 interface{}, val2 interface{}, dataType model.DataType) int {
 	res := 0
 	switch dataType {
-	case "int":
-		t1, _ := val1.(int)
-		t2, _ := val2.(int)
+	case model.Int32:
+		v1 := fmt.Sprintf("%d", val1)
+		v2 := fmt.Sprintf("%d", val2)
+		t1, _ := strconv.Atoi(v1)
+		t2, _ := strconv.Atoi(v2)
 		if t1 > t2 {
 			res = 1
 		} else if t1 < t2 {
 			res = -1
 		}
-	case "float32":
-		t1, _ := val1.(float32)
-		t2, _ := val2.(float32)
+	case model.Float:
+		v1 := fmt.Sprintf("%f", val1)
+		v2 := fmt.Sprintf("%f", val2)
+		t1, _ := strconv.ParseFloat(v1, 64)
+		t2, _ := strconv.ParseFloat(v2, 64)
 		if t1 > t2 {
 			res = 1
 		} else if t1 < t2 {
 			res = -1
 		}
-	case "float64":
-		t1, _ := val1.(float64)
-		t2, _ := val2.(float64)
-		if t1 > t2 {
-			res = 1
-		} else if t1 < t2 {
-			res = -1
-		}
-	case "string":
-		t1, _ := val1.(string)
-		t2, _ := val2.(string)
+	case model.Text:
+		t1 := fmt.Sprintf("%v", val1)
+		t2 := fmt.Sprintf("%v", val2)
 		res = strings.Compare(t1, t2)
 	}
 	logrus.Info("Compare ", dataType, val1, val2, res)

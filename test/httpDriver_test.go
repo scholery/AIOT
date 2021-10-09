@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	. "main/driver"
+	"main/model"
 	. "main/model"
 	"main/service"
 	"testing"
@@ -26,8 +27,8 @@ func Init() {
 	gatewayConfig.Parameters = []Parameter{{Key: "token", Name: "token", Value: "45c89b7fa77ab3d52b7eed083195c107"}}
 
 	//初始化设备和产品定义
-	items := []ItemConfig{{Key: "captureId", Name: "图片ID", Source: "data[10].captureId", DataType: "string"},
-		{Key: "deviceName", Name: "设备名称", Source: "data[10].deviceName", DataType: "string"}}
+	items := []ItemConfig{{Key: "captureId", Name: "图片ID", Source: "data[10].captureId", DataType: model.ItemDataType{Type: Text}},
+		{Key: "deviceName", Name: "设备名称", Source: "data[10].deviceName", DataType: model.ItemDataType{Type: Text}}}
 
 	operationConfigs := []OperationConfig{}
 
@@ -104,7 +105,7 @@ func ExecCalc(data PropertyMessage) {
 	}
 	dataGateway.LoaderMessage(tmpP)
 	service.Public(tmpP, service.Router_prop)
-	alarms, err := dataGateway.Filter(tmpP)
+	alarms, err := dataGateway.FilterAlarm(tmpP)
 	if err != nil {
 		logrus.Error(err)
 		return

@@ -4,7 +4,8 @@ import (
 	"main/model"
 )
 
-type Driver interface { //数据抽取接口
+type Driver interface {
+	//数据抽取接口
 	FetchData() (interface{}, error)
 	//数据抽取接口
 	Extracter(data interface{}) (interface{}, error)

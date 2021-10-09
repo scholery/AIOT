@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	uuid "github.com/satori/go.uuid"
+	"github.com/sirupsen/logrus"
 )
 
 func GetUUID() string {
@@ -20,27 +21,20 @@ func Abs(x int) int {
 	return x
 }
 
-func PropCompareEQ(val1 interface{}, val2 interface{}, dataType string, step string) bool {
+func PropCompareEQ(val1 interface{}, val2 interface{}, dataType model.ItemDataType) bool {
 	noChange := false
-	switch dataType {
-	case "int":
+	switch dataType.Type {
+	case model.Int32:
 		v1, ok1 := val1.(int)
 		v2, ok2 := val2.(int)
-		s, err := strconv.Atoi(step)
+		s, err := strconv.Atoi(dataType.Step)
 		if ok1 && ok2 && err == nil {
 			noChange = Abs(v1-v2) <= s
 		}
-	case "float32":
-		v1, ok1 := val1.(float32)
-		v2, ok2 := val2.(float32)
-		s, err := strconv.ParseFloat(step, 32)
-		if ok1 && ok2 && err == nil {
-			noChange = math.Abs(float64(v1-v2)) <= s
-		}
-	case "float64":
+	case model.Float:
 		v1, ok1 := val1.(float64)
 		v2, ok2 := val2.(float64)
-		s, err := strconv.ParseFloat(step, 64)
+		s, err := strconv.ParseFloat(dataType.Step, 32)
 		if ok1 && ok2 && err == nil {
 			noChange = math.Abs(float64(v1-v2)) <= s
 		}
@@ -72,28 +66,36 @@ func MatchContidion(prop model.PropertyMessage, condition model.Condition) bool 
 
 func Compare(val1 interface{}, val2 interface{}, dataType string) int {
 	res := 0
-	var v1, v2 float64
 	switch dataType {
 	case "int":
 		t1, _ := val1.(int)
 		t2, _ := val2.(int)
-		v1 = float64(t1)
-		v2 = float64(t2)
+		if t1 > t2 {
+			res = 1
+		} else if t1 < t2 {
+			res = -1
+		}
 	case "float32":
 		t1, _ := val1.(float32)
 		t2, _ := val2.(float32)
-		v1 = float64(t1)
-		v2 = float64(t2)
+		if t1 > t2 {
+			res = 1
+		} else if t1 < t2 {
+			res = -1
+		}
 	case "float64":
 		t1, _ := val1.(float64)
 		t2, _ := val2.(float64)
-		v1 = float64(t1)
-		v2 = float64(t2)
+		if t1 > t2 {
+			res = 1
+		} else if t1 < t2 {
+			res = -1
+		}
+	case "string":
+		t1, _ := val1.(string)
+		t2, _ := val2.(string)
+		res = strings.Compare(t1, t2)
 	}
-	if v1 > v2 {
-		res = 1
-	} else if v1 < v2 {
-		res = -1
-	}
+	logrus.Info("Compare ", dataType, val1, val2, res)
 	return res
 }

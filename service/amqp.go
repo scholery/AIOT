@@ -8,7 +8,7 @@ import (
 )
 
 //amqp:// 账号 密码@地址:端口号/vhost
-const MQURL = "amqp://guest:guest@10.10.10.236:5672/"
+const MQURL = "amqp://guest:guest@10.10.10.137:5672/"
 const Router_prop = "prop"
 const Router_alarm = "alarm"
 const exchange = "aiot"

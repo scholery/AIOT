@@ -10,7 +10,7 @@ import (
 
 func GetPropertyItem(item model.ItemConfig, value interface{}) model.PropertyItem {
 
-	return model.PropertyItem{Key: item.Key, Name: item.Name, Value: value, Unit: item.Unit}
+	return model.PropertyItem{Key: item.Key, Name: item.Name, Value: value, DataType: item.DataType}
 }
 func GetMapValue(dataMap map[string]interface{}, key string) interface{} {
 	keys := strings.Split(key, ".")

@@ -6,6 +6,7 @@ import (
 	"main/driver"
 	"main/model"
 	"main/utils"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -23,7 +24,7 @@ type DataGatewayApi interface { //数据抽取接口
 	//数据计算接口
 	Calculater(data interface{}) (interface{}, error)
 	//告警过滤接口
-	Filter(data model.PropertyMessage) (interface{}, error)
+	FilterAlarm(data model.PropertyMessage) (interface{}, error)
 	//数据存储接口
 	LoaderMessage(data model.PropertyMessage) (interface{}, error)
 	//数据存储接口
@@ -41,6 +42,9 @@ type PropertyChan struct {
 	Device          model.Device
 }
 
+/**
+ *数据计算
+ */
 func (gateway *DataGateway) Calculater(data interface{}) (interface{}, error) {
 	device := gateway.Device
 	logrus.Debug(device)
@@ -57,8 +61,11 @@ func (gateway *DataGateway) Calculater(data interface{}) (interface{}, error) {
 	return utils.ExecJS(function.Function, function.Key, data)
 }
 
-func (gateway *DataGateway) Filter(data model.PropertyMessage) ([]interface{}, error) {
-	logrus.Debugf("Filter,message id = %s", data.MessageId)
+/**
+ *告警过滤
+ */
+func (gateway *DataGateway) FilterAlarm(data model.PropertyMessage) ([]interface{}, error) {
+	logrus.Debugf("FilterAlarm,message id = %s", data.MessageId)
 	device := gateway.Device
 	if len(device.Product.AlarmConfigs) == 0 {
 		logrus.Infof("AlarmConfigs is null,device id=%s", device.Key)
@@ -76,29 +83,39 @@ func (gateway *DataGateway) Filter(data model.PropertyMessage) ([]interface{}, e
 			match := utils.MatchContidion(data, condition)
 			hasAlarm = hasAlarm || match
 			if match {
-				poprs = append(poprs, fmt.Sprintf("%s[%d] %s %s", condition.Name, data.Properties[condition.Key].Value, condition.Compare, condition.Value))
+				poprs = append(poprs, fmt.Sprintf("%s(%d %s %s)", condition.Name, data.Properties[condition.Key].Value, condition.Compare, condition.Value))
 			}
 		}
 		if hasAlarm {
 			alarms = append(alarms, model.AlarmMessage{SN: "", DeviceId: device.Key, MessageId: utils.GetUUID(),
-				Timestamp: time.Now().Unix(), Title: config.Name, Message: config.Message, Properties: poprs})
+				Timestamp: time.Now().Unix(), Type: config.Type, Title: config.Name, Message: config.Message, Properties: poprs})
 		}
 	}
 	return alarms, nil
 
 }
 
+/**
+ *消息存储
+ */
 func (gateway *DataGateway) LoaderMessage(data model.PropertyMessage) (bool, error) {
 	logrus.Debugf("save prop,message id = %s", data.MessageId)
 	return true, nil
 
 }
 
+/**
+ *告警存储
+ */
 func (gateway *DataGateway) LoaderAlarm(data model.AlarmMessage) (bool, error) {
 	logrus.Debugf("save alarm,message id = %s", data.MessageId)
 	return true, nil
 
 }
+
+/**
+ *数据推送
+ */
 func Push(data interface{}, router string) bool {
 	return Public(data, router)
 }
@@ -111,7 +128,7 @@ var deviceProps map[string]model.PropertyMessage = make(map[string]model.Propert
 
 /**
  *开启所有属性获取及事件监听
-**/
+ */
 func StartPull() {
 	logrus.Info("StartPull")
 	gatewayConfigs, ok := GetGatewayConfigs()
@@ -134,7 +151,7 @@ func StartPull() {
 
 /**
  *停止所有属性获取及事件监听
-**/
+ */
 func StopPull() {
 	logrus.Info("StopPull")
 	run = false
@@ -143,6 +160,9 @@ func StopPull() {
 	}
 }
 
+/**
+ *开启指定网关属性获取及事件监听
+ */
 func StartGatewayPull(gateway model.GatewayConfig) {
 	logrus.Infof("StartGatewayPull GetGateway %s", gateway.Key)
 	devices, ok := GetDevices(gateway.Key)
@@ -156,6 +176,9 @@ func StartGatewayPull(gateway model.GatewayConfig) {
 
 }
 
+/**
+ *停止指定网关属性获取及事件监听
+ */
 func StopGatewayPull(gateway model.GatewayConfig) bool {
 	logrus.Infof("StopGatewayPull GetGateway %s", gateway.Key)
 	devices, ok := GetDevices(gateway.Key)
@@ -169,6 +192,9 @@ func StopGatewayPull(gateway model.GatewayConfig) bool {
 	return true
 }
 
+/**
+ *开启指定设备属性获取及事件监听
+ */
 func StartDevicePull(gateway model.GatewayConfig, device model.Device) {
 	logrus.Infof("StartDevicePull device %s", device.Key)
 	deviceThreads[device.Key] = true
@@ -177,32 +203,50 @@ func StartDevicePull(gateway model.GatewayConfig, device model.Device) {
 		logrus.Errorf("driver init failed,type is %s,device is %s", gateway.Protocol, device.Key)
 		return
 	}
-	ExecPull(driver, device)
+	ExecPull(driver, device, 0)
 }
 
+/**
+ *停止指定设备属性获取及事件监听
+ */
 func StopDevicePull(gateway model.GatewayConfig, device model.Device) bool {
 	logrus.Infof("StopDevicePull device %s", device.Key)
 	delete(deviceThreads, device.Key)
 	return true
 }
 
-func ExecPull(driver driver.Driver, device model.Device) {
+/**
+ *执行设备连接并抽取数据
+ */
+func ExecPull(driver driver.Driver, device model.Device, sleep int) {
+	//判断是否停止
 	if st, ok := deviceThreads[device.Key]; !ok || !st {
 		logrus.Infof("Stop ExecPull device %s", device.Key)
 		return
 	}
+	//采集间隔
+	if sleep > 0 {
+		time.Sleep(time.Duration(sleep) * time.Second)
+		logrus.Infof("预约%d秒后执行下一次抽取", sleep)
+	}
+	//预约下一次执行
+	go ExecPull(driver, device, device.Product.CollectPeriod)
+
 	logrus.Infof("ExecPull device %s", device.Key)
 	start := time.Now() // 获取当前时间
+	//连接网络抽取数据
 	data, err := driver.FetchData()
 	if err != nil {
 		logrus.Errorf("FetchData error,device is %s,err:%s ", device.Key, err)
 		return
 	}
+	//预处理返回数据
 	data, err = driver.Extracter(data)
 	if err != nil {
 		logrus.Errorf("Extracter data error,device is %s,data:\r\n%s ", device.Key, data)
 		logrus.Error(err)
 	}
+	//根据物模型数据转换
 	data, err = driver.Transformer(data)
 	if err != nil {
 		logrus.Errorf("Transformer data error,device is %s,data:\r\n%s ", device.Key, data)
@@ -210,19 +254,21 @@ func ExecPull(driver driver.Driver, device model.Device) {
 		return
 	}
 	elapsed := time.Since(start)
-	logrus.Debug("ExecPull执行完成耗时：", elapsed)
+	logrus.Info("ExecPull 抽取数据执行完成耗时：", elapsed)
 	tmp, ok := data.(model.PropertyMessage)
+	//发送数据获取成功通知
 	if ok {
 		propMessChan <- PropertyChan{tmp, device}
 	}
-	time.Sleep(time.Duration(device.Product.CollectPeriod) * time.Second)
-	go ExecPull(driver, device)
-	logrus.Debug("下一次执行")
 }
 
+/**
+ *执行计算
+ */
 func ExecCalc(data model.PropertyMessage, device model.Device) {
 	start := time.Now() // 获取当前时间
 	dataGateway := &DataGateway{Device: device}
+	//执行计算函数
 	res, err := dataGateway.Calculater(data)
 	if err != nil {
 		logrus.Error("Calculater error.", err)
@@ -232,41 +278,50 @@ func ExecCalc(data model.PropertyMessage, device model.Device) {
 		logrus.Error("calc error")
 		return
 	}
-	dataGateway.LoaderMessage(tmpP)
 	//变化上报
 	old, ok := deviceProps[device.Key]
-	if !ok || HasChange(device, old, tmpP) {
-		Public(tmpP, Router_prop)
-	} else {
+	if ok && !HasChange(device, old, tmpP) {
 		logrus.Info("no change")
+		return
 	}
-	//更新最新状态
+	//数据存储
+	dataGateway.LoaderMessage(tmpP)
+	//属性推送
+	Public(tmpP, Router_prop)
+	//更新缓存的最新状态
 	deviceProps[device.Key] = tmpP
-	alarms, err := dataGateway.Filter(tmpP)
+	//告警过滤
+	alarms, err := dataGateway.FilterAlarm(tmpP)
+	logrus.Info("alarms", alarms)
 	if err != nil {
 		logrus.Error(err)
 		return
 	}
-
+	//计算告警
 	for _, alarm := range alarms {
 		tmpA, ok := alarm.(model.AlarmMessage)
 		if !ok {
 			logrus.Error("alarm is null")
 		}
+		//告警推送
 		Public(tmpA, Router_alarm)
+		//告警存储
 		dataGateway.LoaderAlarm(tmpA)
 	}
 	elapsed := time.Since(start)
-	logrus.Info("ExecCalc执行完成耗时：", elapsed)
+	logrus.Info("ExecCalc 数据计算执行完成耗时：", elapsed)
 }
 
+/**
+ *属性是否变化
+ */
 func HasChange(device model.Device, old model.PropertyMessage, cur model.PropertyMessage) bool {
 	if len(device.Product.Items) == 0 {
 		return true
 	}
 	hasChange := false
 	for _, item := range device.Product.Items {
-		hasChange = hasChange || !utils.PropCompareEQ(old.Properties[item.Key], cur.Properties[item.Key], item.DataType, item.StepSize)
+		hasChange = strings.Compare(model.DataReportType_Schedule, item.DataReportType) == 0 || !utils.PropCompareEQ(old.Properties[item.Key], cur.Properties[item.Key], item.DataType)
 		if hasChange {
 			break
 		}

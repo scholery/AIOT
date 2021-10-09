@@ -31,9 +31,9 @@ func GetDevices(gateway string) ([]model.Device, bool) {
 func GetProduct(key string) (model.Product, bool) {
 
 	//初始化设备和产品定义
-	items := []model.ItemConfig{{Key: "captureId", Name: "图片ID", Source: "data[10].captureId", DataType: "string"},
-		{Key: "deviceName", Name: "设备名称", Source: "data[10].deviceName", DataType: "string"},
-		{Key: "deviceStatus", Name: "设备状态", Source: "data[10].deviceStatus", DataType: "string"}}
+	items := []model.ItemConfig{{Key: "captureId", Name: "图片ID", Source: "data[10].captureId", DataType: model.ItemDataType{Type: model.Text}},
+		{Key: "deviceName", Name: "设备名称", Source: "data[10].deviceName", DataType: model.ItemDataType{Type: model.Text}},
+		{Key: "deviceStatus", Name: "设备状态", Source: "data[10].deviceStatus", DataType: model.ItemDataType{Type: model.Int32, Dict: map[string]string{"0": "离线", "1": "在线"}}}}
 
 	operationConfigs := []model.OperationConfig{}
 
@@ -41,9 +41,9 @@ func GetProduct(key string) (model.Product, bool) {
 					console.log("hahah length=",data.data.length);
 					//return data.data[0];
 					if(data.data[10].deviceStatus == '离线'){
-						data.data[10].deviceStatus = 0;
+						data.data[10].deviceStatus = "0";
 					}else{
-						data.data[10].deviceStatus = 1;
+						data.data[10].deviceStatus = "1";
 					}
 					return data;
 				}`
@@ -55,9 +55,11 @@ func GetProduct(key string) (model.Product, bool) {
 		model.Function_Calc: {Key: model.Function_Calc, Name: "数据计算", Function: calc}}
 
 	operations := []model.OperationConfig{}
-	conditions := []model.Condition{{Key: "deviceStatus", Name: "设备状态", DataType: "int", Compare: "=", Value: "0"}}
+	conditions := []model.Condition{{Key: "deviceStatus", Name: "设备状态", DataType: "string", Compare: "=", Value: "0"}}
+	conditions1 := []model.Condition{{Key: "deviceStatus", Name: "设备状态", DataType: "string", Compare: "=", Value: "1"}}
 
-	alarmConfigs := []model.AlarmConfig{{Key: "offline", Name: "设备离线", Level: "1", Conditions: conditions, Operations: operations, Message: "设备离线"}}
+	alarmConfigs := []model.AlarmConfig{{Key: "offline", Name: "设备离线", Level: "1", Type: "event", Conditions: conditions, Operations: operations, Message: "设备离线"},
+		{Key: "online", Name: "设备上线", Level: "1", Type: "event", Conditions: conditions1, Message: "设备上线"}}
 
 	product := model.Product{Key: "p1", Name: "产品1", CollectPeriod: 20, DataCombination: "array",
 		Items: items, OperationConfigs: operationConfigs, AlarmConfigs: alarmConfigs, FunctionConfigs: functionConfigs}

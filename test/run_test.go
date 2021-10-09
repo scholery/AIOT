@@ -16,7 +16,7 @@ func TestRun(t *testing.T) {
 	i := 1
 	for {
 		time.Sleep(time.Second)
-		if i == 100 {
+		if i == 50 {
 			service.StopPull()
 			break
 		}

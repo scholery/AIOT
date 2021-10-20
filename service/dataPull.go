@@ -7,6 +7,7 @@ import (
 	"main/model"
 	"main/utils"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -19,6 +20,7 @@ var propMessChan = make(chan PropertyChan, Message_queen_size)
 
 //运行标记
 var run bool
+var runLock sync.Mutex
 
 type DataGatewayApi interface { //数据抽取接口
 	//数据计算接口
@@ -110,7 +112,6 @@ func (gateway *DataGateway) LoaderMessage(data model.PropertyMessage) (bool, err
 func (gateway *DataGateway) LoaderAlarm(data model.AlarmMessage) (bool, error) {
 	logrus.Debugf("save alarm,message id = %s", data.MessageId)
 	return true, nil
-
 }
 
 /**
@@ -122,6 +123,7 @@ func Push(data interface{}, router string) bool {
 
 //设备运行状态控制
 var deviceThreads map[string]bool = make(map[string]bool)
+var deviceRunLock sync.RWMutex
 
 //设备状态
 var deviceProps map[string]model.PropertyMessage = make(map[string]model.PropertyMessage)
@@ -154,9 +156,11 @@ func StartPull() {
  */
 func StopPull() {
 	logrus.Info("StopPull")
+	runLock.Lock()
+	defer runLock.Unlock()
 	run = false
 	for k := range deviceThreads {
-		delete(deviceThreads, k)
+		setDeviceStop(k)
 	}
 }
 
@@ -197,13 +201,13 @@ func StopGatewayPull(gateway model.GatewayConfig) bool {
  */
 func StartDevicePull(gateway model.GatewayConfig, device model.Device) {
 	logrus.Infof("StartDevicePull device %s", device.Key)
-	deviceThreads[device.Key] = true
+	setDeviceRun(device.Key)
 	driver, ok := driver.GetDriver(gateway, device)
 	if !ok {
 		logrus.Errorf("driver init failed,type is %s,device is %s", gateway.Protocol, device.Key)
 		return
 	}
-	ExecPull(driver, device, 0)
+	go ExecPull(driver, device, 0)
 }
 
 /**
@@ -211,8 +215,27 @@ func StartDevicePull(gateway model.GatewayConfig, device model.Device) {
  */
 func StopDevicePull(gateway model.GatewayConfig, device model.Device) bool {
 	logrus.Infof("StopDevicePull device %s", device.Key)
-	delete(deviceThreads, device.Key)
+	setDeviceStop(device.Key)
 	return true
+}
+
+func isDeviceRun(key string) bool {
+	deviceRunLock.RLock()
+	defer deviceRunLock.RUnlock()
+	st, ok := deviceThreads[key]
+	return ok && st
+}
+
+func setDeviceRun(key string) {
+	deviceRunLock.Lock()
+	defer deviceRunLock.Unlock()
+	deviceThreads[key] = true
+}
+
+func setDeviceStop(key string) {
+	deviceRunLock.Lock()
+	defer deviceRunLock.Unlock()
+	delete(deviceThreads, key)
 }
 
 /**
@@ -220,7 +243,7 @@ func StopDevicePull(gateway model.GatewayConfig, device model.Device) bool {
  */
 func ExecPull(driver driver.Driver, device model.Device, sleep int) {
 	//判断是否停止
-	if st, ok := deviceThreads[device.Key]; !ok || !st {
+	if !isDeviceRun(device.Key) {
 		logrus.Infof("Stop ExecPull device %s", device.Key)
 		return
 	}

@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	uuid "github.com/satori/go.uuid"
-	"github.com/sirupsen/logrus"
 )
 
 func GetUUID() string {
@@ -97,6 +96,5 @@ func Compare(val1 interface{}, val2 interface{}, dataType model.DataType) int {
 		t2 := fmt.Sprintf("%v", val2)
 		res = strings.Compare(t1, t2)
 	}
-	logrus.Info("Compare ", dataType, val1, val2, res)
 	return res
 }

@@ -2,6 +2,7 @@ package test
 
 import (
 	"main/service"
+	"runtime"
 	"testing"
 	"time"
 
@@ -19,6 +20,9 @@ func TestRun(t *testing.T) {
 		if i == 100 {
 			service.StopPull()
 			break
+		}
+		if i == 10 {
+			logrus.Infof("runtime threads:%d", runtime.NumGoroutine())
 		}
 		i++
 	}

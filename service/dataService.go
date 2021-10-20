@@ -14,7 +14,7 @@ func GetGatewayConfigs() ([]model.GatewayConfig, bool) {
 	gatewayConfig.Port = 8012
 	gatewayConfig.Protocol = "http"
 	gatewayConfig.ApiConfigs = map[string]model.ApiConfig{model.API_GetProp: {Key: model.API_GetProp, Method: "get", Name: "获取告警", Value: "/cm-admin/alarm/event/eventsRel/214"}}
-	gatewayConfig.Parameters = []model.Parameter{{Key: "token", Name: "token", Value: "45c89b7fa77ab3d52b7eed083195c107"}}
+	gatewayConfig.Parameters = []model.Parameter{{Key: "token", Name: "token", Value: "zhejiang_data_push_token"}}
 
 	return []model.GatewayConfig{gatewayConfig}, true
 }

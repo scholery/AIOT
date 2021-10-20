@@ -3,11 +3,30 @@ package main
 import (
 	//. "main/model"
 
+	"main/service"
+	"runtime"
+	"time"
+
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
 	logrus.SetLevel(logrus.InfoLevel)
+	service.Connect()
+	defer service.Close()
+	go service.StartPull()
+	i := 1
+	for {
+		time.Sleep(time.Second)
+		if i == 100 {
+			service.StopPull()
+			break
+		}
+		if i == 10 {
+			logrus.Infof("runtime threads:%d", runtime.NumGoroutine())
+		}
+		i++
+	}
 	//logrus.SetFormatter(&logrus.JSONFormatter{})
 	//test.Exec()
 	//TestTCPClientAdvancedUsage()

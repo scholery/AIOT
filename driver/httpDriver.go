@@ -5,28 +5,30 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	. "main/model"
+	"main/model"
 	utils "main/utils"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/sirupsen/logrus"
 )
 
 type HttpDriver struct {
-	Gateway GatewayConfig
-	Device  Device
+	Gateway model.GatewayConfig
 }
 
-func (httpDriver *HttpDriver) FetchData() (interface{}, error) {
-	api, ok := httpDriver.Gateway.ApiConfigs[API_GetProp]
+func (httpDriver *HttpDriver) FetchPropBatch() (interface{}, error) {
+	return nil, errors.New("no implatement")
+}
+
+func (httpDriver *HttpDriver) FetchProp(device model.Device) (interface{}, error) {
+	api, ok := httpDriver.Gateway.ApiConfigs[model.API_GetProp]
 	if !ok {
 		return nil, errors.New("FetchData api is null")
 	}
 	logrus.Debug("httpDriver:", *httpDriver)
-	address, err := url.Parse(fmt.Sprintf("http://%s:%d%s", httpDriver.Gateway.Ip, httpDriver.Gateway.Port, api.Value))
+	address, err := url.Parse(fmt.Sprintf("http://%s:%d%s", httpDriver.Gateway.Ip, httpDriver.Gateway.Port, api.Path))
 	logrus.Debugf("request url=%s", address.String())
 	if err != nil {
 		logrus.Error("url err:", err)
@@ -67,35 +69,27 @@ func (httpDriver *HttpDriver) FetchData() (interface{}, error) {
 }
 
 //数据抽取接口
-func (httpDriver *HttpDriver) Extracter(data interface{}) (interface{}, error) {
-	if len(httpDriver.Device.Product.DataCombination) == 0 {
-		return nil, errors.New("product is null")
-	}
-	if len(httpDriver.Device.Product.FunctionConfigs) == 0 {
+func (httpDriver *HttpDriver) ExtracterProp(data interface{}, device model.Device) (interface{}, error) {
+	if len(device.Product.FunctionConfigs) == 0 {
 		return nil, errors.New("function is null")
 	}
-	function, ok := httpDriver.Device.Product.FunctionConfigs[Function_Extract]
+	function, ok := device.Product.FunctionConfigs[model.Function_Extract]
 	if !ok {
 		return nil, errors.New("function is null")
 	}
-	logrus.Debugf("Extracter funtion name=%s", Function_Extract)
+	logrus.Debugf("Extracter funtion name=%s", model.Function_Extract)
 	return utils.ExecJS(function.Function, function.Key, data)
 }
 
 //数据转换接口
-func (httpDriver *HttpDriver) Transformer(data interface{}) (interface{}, error) {
-	dataMap, ok := data.(map[string]interface{})
-	if !ok {
-		return nil, errors.New("transformer:data format error")
-	}
-	if len(httpDriver.Device.Product.Items) == 0 {
-		return nil, errors.New("product model item is empty")
-	}
-	dataTmp := make(map[string]PropertyItem)
-	for _, item := range httpDriver.Device.Product.Items {
-		dataTmp[item.Key] = utils.GetPropertyItem(item, utils.GetMapValue(dataMap, item.Source))
-	}
+func (httpDriver *HttpDriver) TransformerProp(data interface{}, device model.Device) (interface{}, error) {
+	return utils.Transformer2DeviceProp(data, device)
+}
 
-	return PropertyMessage{DeviceId: httpDriver.Device.Key, MessageId: utils.GetUUID(),
-		Timestamp: time.Now().Unix(), Properties: dataTmp}, nil
+func (httpDriver *HttpDriver) GetCollectPeriod(key string) int {
+	api, ok := httpDriver.Gateway.ApiConfigs[model.API_GetProp]
+	if !ok {
+		return -1
+	}
+	return api.CollectPeriod
 }

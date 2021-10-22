@@ -1,5 +1,11 @@
 package model
 
+//协议
+const Geteway_Protocol_HTTP = "http"
+const Geteway_Protocol_MQTT = "MQTT"
+const Geteway_Protocol_ModbusTCP = "modbusTCP"
+const Geteway_Protocol_OPCUA = "OPCUA"
+
 const API_GetProp string = "getProp" //取数据接口
 const API_SetProp string = "setProp" //写数据接口
 
@@ -10,14 +16,21 @@ const Function_postBody string = "postBody" //数据写入前处理函数
 const DataReportType_Schedule string = "schedule" //按时上报
 const DataReportType_Change string = "change"     //变化上报
 
+const CollectType_Schedule string = "schedule" //定时
+const CollectType_Poll string = "poll"         //轮询
+
+const DataCombination_Single = "single" //单条
+const DataCombination_Array = "array"   //批量
+
 type Product struct {
-	Key              string                    `json:"key"`
-	Name             string                    `json:"name"`
-	Category         string                    `json:"category"`        //分类
-	CollectPeriod    int                       `json:"collectPeriod"`   //采集周期
-	DataCombination  string                    `json:"dataCombination"` //数据类型，单条、数组
+	Key      string `json:"key"`
+	Name     string `json:"name"`
+	Category string `json:"category"` //分类
+	//CollectPeriod    int                       `json:"collectPeriod"`   //采集周期
+	//DataCombination  string                    `json:"dataCombination"` //数据类型，单条、数组
 	Desc             string                    `json:"desc"`
 	Items            []ItemConfig              `json:"items"`            //物模型
+	EventConfigs     []string                  `json:"eventConfigs"`     //函数配置
 	OperationConfigs []OperationConfig         `json:"operationConfigs"` //操作定义
 	AlarmConfigs     []AlarmConfig             `json:"alarmSettings"`    //告警配置
 	FunctionConfigs  map[string]FunctionConfig `json:"functionConfigs"`  //函数配置
@@ -66,10 +79,15 @@ type Parameter struct {
 }
 
 type ApiConfig struct {
-	Key    string `json:"key"`
-	Name   string `json:"name"`
-	Value  string `json:"value"`
-	Method string `json:"mthod"` //方式，get、post
+	Key             string      `json:"key"`
+	Name            string      `json:"name"`
+	Path            string      `json:"path"`
+	Method          string      `json:"mthod"`           //方式，get、post
+	Parameters      []Parameter `json:"parameters"`      //入参配置
+	CollectType     string      `json:"collectType"`     //采集方式：定时、轮询
+	CollectPeriod   int         `json:"collectPeriod"`   //采集周期:秒
+	DataCombination string      `json:"dataCombination"` //数据类型，单条、数组
+	Cron            string      `json:"cron"`            //时间表达式
 }
 
 /**告警定义**/

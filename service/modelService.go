@@ -13,7 +13,7 @@ func GetGatewayConfigs() ([]model.GatewayConfig, bool) {
 	gatewayConfig.Ip = "124.160.72.210"
 	gatewayConfig.Port = 8012
 	gatewayConfig.Protocol = "http"
-	gatewayConfig.ApiConfigs = map[string]model.ApiConfig{model.API_GetProp: {Key: model.API_GetProp, Method: "get", Name: "获取告警", Value: "/cm-admin/alarm/event/eventsRel/214"}}
+	gatewayConfig.ApiConfigs = map[string]model.ApiConfig{model.API_GetProp: {Key: model.API_GetProp, Method: "get", Name: "获取告警", Path: "/cm-admin/alarm/event/eventsRel/214", CollectType: model.CollectType_Schedule, CollectPeriod: 20, DataCombination: model.DataCombination_Single}}
 	gatewayConfig.Parameters = []model.Parameter{{Key: "token", Name: "token", Value: "zhejiang_data_push_token"}}
 
 	return []model.GatewayConfig{gatewayConfig}, true
@@ -61,7 +61,7 @@ func GetProduct(key string) (model.Product, bool) {
 	alarmConfigs := []model.AlarmConfig{{Key: "offline", Name: "设备离线", Level: "1", Type: "event", Conditions: conditions, Operations: operations, Message: "设备离线"},
 		{Key: "online", Name: "设备上线", Level: "1", Type: "event", Conditions: conditions1, Message: "设备上线"}}
 
-	product := model.Product{Key: "p1", Name: "产品1", CollectPeriod: 20, DataCombination: "array",
+	product := model.Product{Key: "p1", Name: "产品1",
 		Items: items, OperationConfigs: operationConfigs, AlarmConfigs: alarmConfigs, FunctionConfigs: functionConfigs}
 	return product, true
 }

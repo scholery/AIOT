@@ -5,12 +5,16 @@ import (
 )
 
 type Driver interface {
+	//数据抽取接口,批量
+	FetchPropBatch() (interface{}, error)
+	//数据抽取接口,单条
+	FetchProp(device model.Device) (interface{}, error)
 	//数据抽取接口
-	FetchData() (interface{}, error)
-	//数据抽取接口
-	Extracter(data interface{}) (interface{}, error)
+	ExtracterProp(data interface{}, device model.Device) (interface{}, error)
 	//数据转换接口
-	Transformer(data interface{}) (interface{}, error)
+	TransformerProp(data interface{}, device model.Device) (interface{}, error)
+
+	GetCollectPeriod(key string) int
 }
 
 func GetDriver(gateway model.GatewayConfig, device model.Device) (Driver, bool) {
@@ -18,7 +22,7 @@ func GetDriver(gateway model.GatewayConfig, device model.Device) (Driver, bool) 
 	ok := false
 	switch gateway.Protocol {
 	case "http":
-		driver = &HttpDriver{gateway, device}
+		driver = &HttpDriver{gateway}
 		ok = true
 	case "Modbus":
 	default:

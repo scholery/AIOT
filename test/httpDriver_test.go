@@ -23,7 +23,7 @@ func Init() {
 	gatewayConfig.Ip = "124.160.72.210"
 	gatewayConfig.Port = 8012
 	gatewayConfig.Protocol = "http"
-	gatewayConfig.ApiConfigs = map[string]ApiConfig{API_GetProp: {Key: API_GetProp, Method: "get", Name: "获取告警", Value: "/cm-admin/alarm/event/eventsRel/214"}}
+	gatewayConfig.ApiConfigs = map[string]model.ApiConfig{model.API_GetProp: {Key: model.API_GetProp, Method: "get", Name: "获取告警", Path: "/cm-admin/alarm/event/eventsRel/214", CollectType: model.CollectType_Schedule, CollectPeriod: 20, DataCombination: model.DataCombination_Single}}
 	gatewayConfig.Parameters = []Parameter{{Key: "token", Name: "token", Value: "45c89b7fa77ab3d52b7eed083195c107"}}
 
 	//初始化设备和产品定义
@@ -44,19 +44,20 @@ func Init() {
 	functionConfigs := map[string]FunctionConfig{Function_Extract: {Key: Function_Extract, Name: "数据抽取", Function: extract},
 		Function_Calc: {Key: Function_Calc, Name: "数据计算", Function: calc}}
 
-	product := Product{Key: "p1", Name: "产品1", CollectPeriod: 5, DataCombination: "array",
+	product := Product{Key: "p1", Name: "产品1",
 		Items: items, OperationConfigs: operationConfigs, FunctionConfigs: functionConfigs}
 
 	device = Device{Key: "test1", Name: "测试设备1", SourceId: "b6992eaf2fe2464da6189d7ea2dfdd1a", Product: product}
 
-	httpDriver = HttpDriver{Gateway: gatewayConfig, Device: device}
+	httpDriver = HttpDriver{Gateway: gatewayConfig}
 }
 
 func ExecHttpTest(c chan PropertyMessage) {
 	for {
 		logrus.Info("gateway run")
 		ExecHttp(c)
-		time.Sleep(time.Duration(httpDriver.Device.Product.CollectPeriod) * time.Second)
+		period := httpDriver.GetCollectPeriod(model.API_GetProp)
+		time.Sleep(time.Duration(period) * time.Second)
 	}
 }
 
@@ -64,19 +65,19 @@ func ExecHttp(c chan PropertyMessage) {
 	start := time.Now() // 获取当前时间
 	Init()
 	var driver Driver = &httpDriver
-	data, err := driver.FetchData()
+	data, err := driver.FetchProp(device)
 	//logrus.Debug("FetchData:", data)
 	if err != nil {
 		logrus.Error(err)
 		return
 	}
-	data, err = driver.Extracter(data)
+	data, err = driver.ExtracterProp(data, device)
 	//logrus.Debug("Extracter:", data.(map[string]interface{})["deviceName"])
 	if err != nil {
 		logrus.Error(err)
 		return
 	}
-	data, err = driver.Transformer(data)
+	data, err = driver.TransformerProp(data, device)
 	logrus.Info("Transformer:", data)
 	if err != nil {
 		logrus.Error(err)

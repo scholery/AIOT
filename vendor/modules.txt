@@ -25,6 +25,9 @@ github.com/robertkrimen/otto/file
 github.com/robertkrimen/otto/parser
 github.com/robertkrimen/otto/registry
 github.com/robertkrimen/otto/token
+# github.com/robfig/cron v1.2.0
+## explicit
+github.com/robfig/cron
 # github.com/satori/go.uuid v1.2.0
 ## explicit
 github.com/satori/go.uuid

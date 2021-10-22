@@ -1,8 +1,6 @@
 package service
 
 import (
-	"errors"
-	"fmt"
 	"main/driver"
 	"main/model"
 	"main/utils"
@@ -13,113 +11,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const Message_queen_size = 10
-
-//设备属性消息通道
-var propMessChan = make(chan PropertyChan, Message_queen_size)
-
-//运行标记
-var run bool
-var runLock sync.Mutex
-
-type DataGatewayApi interface { //数据抽取接口
-	//数据计算接口
-	Calculater(data interface{}) (interface{}, error)
-	//告警过滤接口
-	FilterAlarm(data model.PropertyMessage) (interface{}, error)
-	//数据存储接口
-	LoaderMessage(data model.PropertyMessage) (interface{}, error)
-	//数据存储接口
-	LoaderAlarm(data model.AlarmMessage) (interface{}, error)
-	//数据存储接口
-	Push(interface{}, string) bool
-}
-
-type DataGateway struct {
-	Device model.Device
-}
-
 type PropertyChan struct {
 	PropertyMessage model.PropertyMessage
 	Device          model.Device
 }
 
-/**
- *数据计算
- */
-func (gateway *DataGateway) Calculater(data interface{}) (interface{}, error) {
-	device := gateway.Device
-	logrus.Debug(device)
-	if len(device.Product.FunctionConfigs) == 0 {
-		logrus.Errorf("Function_Calc is null,device id=%s", device.Key)
-		return data, errors.New("function is null")
-	}
-	function, ok := device.Product.FunctionConfigs[model.Function_Calc]
-	if !ok {
-		logrus.Errorf("Function_Calc is null,device id=%s", device.Key)
-		return data, errors.New("Function_Calc is null")
-	}
-	logrus.Debugf("Function_Calc funtion name=%s", model.Function_Calc)
-	return utils.ExecJS(function.Function, function.Key, data)
+type EventChan struct {
+	EventMessage model.EventMessage
+	Device       model.Device
 }
 
-/**
- *告警过滤
- */
-func (gateway *DataGateway) FilterAlarm(data model.PropertyMessage) ([]interface{}, error) {
-	logrus.Debugf("FilterAlarm,message id = %s", data.MessageId)
-	device := gateway.Device
-	if len(device.Product.AlarmConfigs) == 0 {
-		logrus.Infof("AlarmConfigs is null,device id=%s", device.Key)
-		return nil, errors.New("AlarmConfigs is null")
-	}
-	alarms := make([]interface{}, 0)
-	for _, config := range device.Product.AlarmConfigs {
-		if len(config.Conditions) == 0 {
-			logrus.Infof("Conditions is null,device id=%s,alarm key=%s", device.Key, config.Key)
-			continue
-		}
-		hasAlarm := false
-		poprs := make([]interface{}, 0)
-		for _, condition := range config.Conditions {
-			match := utils.MatchContidion(data, condition)
-			hasAlarm = hasAlarm || match
-			if match {
-				poprs = append(poprs, fmt.Sprintf("%s(%v %s %v)", condition.Name, data.Properties[condition.Key].Value, condition.Compare, condition.Value))
-			}
-		}
-		if hasAlarm {
-			alarms = append(alarms, model.AlarmMessage{SN: "", DeviceId: device.Key, MessageId: utils.GetUUID(),
-				Timestamp: time.Now().Unix(), Type: config.Type, Title: config.Name, Message: config.Message, Properties: poprs})
-		}
-	}
-	return alarms, nil
-
-}
-
-/**
- *消息存储
- */
-func (gateway *DataGateway) LoaderMessage(data model.PropertyMessage) (bool, error) {
-	logrus.Debugf("save prop,message id = %s", data.MessageId)
-	return true, nil
-
-}
-
-/**
- *告警存储
- */
-func (gateway *DataGateway) LoaderAlarm(data model.AlarmMessage) (bool, error) {
-	logrus.Debugf("save alarm,message id = %s", data.MessageId)
-	return true, nil
-}
-
-/**
- *数据推送
- */
-func Push(data interface{}, router string) bool {
-	return Public(data, router)
-}
+//运行标记
+var run bool
+var runLock sync.Mutex
 
 //设备运行状态控制
 var deviceThreads map[string]bool = make(map[string]bool)
@@ -127,6 +31,10 @@ var deviceRunLock sync.RWMutex
 
 //设备状态
 var deviceProps map[string]model.PropertyMessage = make(map[string]model.PropertyMessage)
+
+//设备属性消息通道
+var propMessChan = make(chan PropertyChan, Message_queen_size)
+var eventMessChan = make(chan EventChan, Message_queen_size)
 
 /**
  *开启所有属性获取及事件监听
@@ -145,7 +53,9 @@ func StartPull() {
 	for run {
 		select {
 		case tmp := <-propMessChan:
-			go ExecCalc(tmp.PropertyMessage, tmp.Device)
+			go ExecDevicePropCalc(tmp.PropertyMessage, tmp.Device)
+		case evt := <-eventMessChan:
+			logrus.Info(evt)
 		default:
 		}
 	}
@@ -174,8 +84,29 @@ func StartGatewayPull(gateway model.GatewayConfig) {
 		logrus.Error("GetGateway %s's related device is null", gateway.Key)
 		return
 	}
-	for _, device := range devices {
-		StartDevicePull(gateway, device)
+	//拉取设备属性
+	switch gateway.Protocol {
+	case model.Geteway_Protocol_HTTP:
+		getPropApi, ok := gateway.ApiConfigs[model.API_GetProp]
+		if gateway.Protocol == "" && !ok {
+			logrus.Error("GetGateway %s's API %s is null", gateway.Key, model.API_GetProp)
+			return
+		}
+		if getPropApi.DataCombination == model.DataCombination_Single {
+			//拉取属性信息
+			for _, device := range devices {
+				StartDevicePull(gateway, device)
+			}
+		} else {
+			StartDevicePullBatch(gateway, devices)
+		}
+	case model.Geteway_Protocol_MQTT:
+	case model.Geteway_Protocol_ModbusTCP:
+	case model.Geteway_Protocol_OPCUA:
+		//拉取属性信息
+		for _, device := range devices {
+			StartDevicePull(gateway, device)
+		}
 	}
 
 }
@@ -190,10 +121,34 @@ func StopGatewayPull(gateway model.GatewayConfig) bool {
 		logrus.Error("GetGateway %s's related device is null", gateway.Key)
 		return false
 	}
-	for _, device := range devices {
-		StopDevicePull(gateway, device)
+	switch gateway.Protocol {
+	case model.Geteway_Protocol_HTTP:
+		getPropApi, ok := gateway.ApiConfigs[model.API_GetProp]
+		if gateway.Protocol == "" && !ok {
+			logrus.Error("GetGateway %s's API %s is null", gateway.Key, model.API_GetProp)
+			return false
+		}
+		if getPropApi.DataCombination == model.DataCombination_Single {
+			for _, device := range devices {
+				StopDevicePull(gateway, device)
+			}
+		} else {
+			StartDevicePullBatch(gateway, devices)
+		}
+	case model.Geteway_Protocol_MQTT:
+	case model.Geteway_Protocol_ModbusTCP:
+	case model.Geteway_Protocol_OPCUA:
+		for _, device := range devices {
+			StopDevicePull(gateway, device)
+		}
 	}
 	return true
+}
+
+/**
+ *开启指定设备属性获取及事件监听
+ */
+func StartDevicePullBatch(gateway model.GatewayConfig, device []model.Device) {
 }
 
 /**
@@ -207,7 +162,7 @@ func StartDevicePull(gateway model.GatewayConfig, device model.Device) {
 		logrus.Errorf("driver init failed,type is %s,device is %s", gateway.Protocol, device.Key)
 		return
 	}
-	go ExecPull(driver, device, 0)
+	go ExecDevicePropPull(driver, device)
 }
 
 /**
@@ -241,43 +196,48 @@ func setDeviceStop(key string) {
 /**
  *执行设备连接并抽取数据
  */
-func ExecPull(driver driver.Driver, device model.Device, sleep int) {
+func ExecDevicePropPull(driver driver.Driver, device model.Device) {
 	//判断是否停止
 	if !isDeviceRun(device.Key) {
-		logrus.Infof("Stop ExecPull device %s", device.Key)
+		logrus.Infof("Stop PullDeviceProp device %s", device.Key)
 		return
 	}
-	//采集间隔
-	if sleep > 0 {
-		time.Sleep(time.Duration(sleep) * time.Second)
-		logrus.Infof("预约%d秒后执行下一次抽取", sleep)
-	}
-	//预约下一次执行
-	go ExecPull(driver, device, device.Product.CollectPeriod)
-
-	logrus.Infof("ExecPull device %s", device.Key)
+	logrus.Infof("PullDeviceProp device %s", device.Key)
+	//下一次轮询
+	period := driver.GetCollectPeriod(model.API_GetProp)
+	time.AfterFunc(time.Duration(period)*time.Second, func() { ExecDevicePropPull(driver, device) })
+	logrus.Infof("预约%d秒后执行下一次抽取", period)
 	start := time.Now() // 获取当前时间
 	//连接网络抽取数据
-	data, err := driver.FetchData()
+	data, err := driver.FetchProp(device)
 	if err != nil {
 		logrus.Errorf("FetchData error,device is %s,err:%s ", device.Key, err)
 		return
 	}
+	//处理抽取的数据
+	PostDevicePropPull(data, driver, device)
+	elapsed := time.Since(start)
+	logrus.Info("ExecPullDeviceProp 抽取数据执行完成耗时：", elapsed)
+}
+
+/**
+ *处理抽取的设备属性数据
+ */
+func PostDevicePropPull(props interface{}, driver driver.Driver, device model.Device) {
 	//预处理返回数据
-	data, err = driver.Extracter(data)
+	data, err := driver.ExtracterProp(props, device)
 	if err != nil {
+		data = props
 		logrus.Errorf("Extracter data error,device is %s,data:\r\n%s ", device.Key, data)
 		logrus.Error(err)
 	}
 	//根据物模型数据转换
-	data, err = driver.Transformer(data)
+	data, err = driver.TransformerProp(data, device)
 	if err != nil {
 		logrus.Errorf("Transformer data error,device is %s,data:\r\n%s ", device.Key, data)
 		logrus.Error(err)
 		return
 	}
-	elapsed := time.Since(start)
-	logrus.Info("ExecPull 抽取数据执行完成耗时：", elapsed)
 	tmp, ok := data.(model.PropertyMessage)
 	//发送数据获取成功通知
 	if ok {
@@ -288,7 +248,7 @@ func ExecPull(driver driver.Driver, device model.Device, sleep int) {
 /**
  *执行计算
  */
-func ExecCalc(data model.PropertyMessage, device model.Device) {
+func ExecDevicePropCalc(data model.PropertyMessage, device model.Device) {
 	start := time.Now() // 获取当前时间
 	dataGateway := &DataGateway{Device: device}
 	//执行计算函数
@@ -308,7 +268,7 @@ func ExecCalc(data model.PropertyMessage, device model.Device) {
 		return
 	}
 	//数据存储
-	dataGateway.LoaderMessage(tmpP)
+	dataGateway.LoaderProperty(tmpP)
 	//属性推送
 	Public(tmpP, Router_prop)
 	//更新缓存的最新状态

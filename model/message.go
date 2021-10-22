@@ -24,3 +24,14 @@ type AlarmMessage struct {
 	Message    string        `json:"message"`
 	Properties []interface{} `json:"properties"` //告警属性列表
 }
+
+type EventMessage struct {
+	SN         string                  `json:"sn"`
+	DeviceId   string                  `json:"deviceId"`
+	MessageId  string                  `json:"messageId"`
+	Timestamp  int64                   `json:"timestamp"`
+	Type       string                  `json:"type"` //event、alarm
+	Title      string                  `json:"title"`
+	Message    string                  `json:"message"`
+	Properties map[string]PropertyItem `json:"properties"` //物模型属性列表
+}

@@ -1,12 +1,32 @@
 package utils
 
 import (
+	"errors"
 	"main/model"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
+
+//数据转换接口
+func Transformer2DeviceProp(data interface{}, device model.Device) (interface{}, error) {
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		return nil, errors.New("transformer:data format error")
+	}
+	if len(device.Product.Items) == 0 {
+		return nil, errors.New("product model item is empty")
+	}
+	dataTmp := make(map[string]model.PropertyItem)
+	for _, item := range device.Product.Items {
+		dataTmp[item.Key] = GetPropertyItem(item, GetMapValue(dataMap, item.Source))
+	}
+
+	return model.PropertyMessage{DeviceId: device.Key, MessageId: GetUUID(),
+		Timestamp: time.Now().Unix(), Properties: dataTmp}, nil
+}
 
 func GetPropertyItem(item model.ItemConfig, value interface{}) model.PropertyItem {
 

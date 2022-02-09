@@ -1,0 +1,5 @@
+package common
+
+var MAX_LIMIT = 1000000
+
+var SQLITE_LIMIT_VARIABLE_NUMER = 999

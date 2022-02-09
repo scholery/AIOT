@@ -1,0 +1,14 @@
+{
+    "webPort": 8080,
+    "dbPath": "../work/db",
+    "iotImagePath": "../work/iot",
+    "tempPath": "../work/tmp",
+    "iotAlarmMaxCount": 5000,
+    "iotEventMaxCount": 5000,
+    "iotPropsMaxCount": 5000,
+    "defaultSN": "05113230-4733-3650-0a00-000000000000",
+    "iotEventPushHttptUrl": "http://localhost:81/app/api/v1/iot/gateway/http-server-81/events",
+    "iotAlarmPushHttptUrl": "http://localhost:81/app/api/v1/iot/gateway/http-server-81/events",
+    "iotPropsPushHttptUrl": "http://localhost:81/app/api/v1/iot/gateway/http-server-81/events",
+    "iotDeviceStatusPushHttptUrl": "http://localhost:81/app/api/v1/iot/gateway/http-server-81/events"
+}

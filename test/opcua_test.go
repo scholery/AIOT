@@ -51,7 +51,7 @@ func ExecOpc() {
 	}
 	defer c.Close()
 
-	nodeId, _ := ua.ParseNodeID("ns=2;i=3")
+	nodeId, _ := ua.ParseNodeID("ns=2;i=2")
 	//v, err := c.Node(ua.NewNumericNodeID(2, 2)).Value()
 	v, err := c.Node(nodeId).Value()
 
@@ -77,7 +77,7 @@ func ExecOpc() {
 	//}
 	// arbitrary client handle for the monitoring item
 	handle := uint32(42)
-	id, _ := ua.ParseNodeID("ns=2;i=7")
+	id, _ := ua.ParseNodeID("ns=2;i=3")
 	miCreateRequest := opcua.NewMonitoredItemCreateRequestWithDefaults(id, ua.AttributeIDValue, handle)
 	res, err := sub.Monitor(ua.TimestampsToReturnBoth, miCreateRequest)
 	if err != nil || res.Results[0].StatusCode != ua.StatusOK {

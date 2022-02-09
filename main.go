@@ -1,68 +1,63 @@
 package main
 
 import (
-	//. "main/model"
-
-	"main/service"
+	"net/http"
+	"os/signal"
 	"runtime"
-	"time"
+	"syscall"
+
+	"koudai-box/cache"
+	"koudai-box/conf"
+	"koudai-box/global"
+
+	"koudai-box/iot/db"
+	iot "koudai-box/iot/gateway/service"
+	"koudai-box/iot/service"
+	"koudai-box/iot/web"
 
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
 	logrus.SetLevel(logrus.InfoLevel)
-	service.Connect()
-	defer service.Close()
-	go service.StartPull()
-	i := 1
-	for {
-		time.Sleep(time.Second)
-		if i == 100 {
-			service.StopPull()
-			break
+
+	var server *http.Server
+	signal.Notify(global.SystemExitChannel, syscall.SIGINT)
+	signal.Notify(global.SystemExitChannel, syscall.SIGTERM)
+
+	go func() {
+		sig := <-global.SystemExitChannel
+		logrus.Infof("收到停止指令 %s signal, threads:%d", sig.String(), runtime.NumGoroutine())
+		if server != nil {
+			server.Close()
 		}
-		if i == 10 {
-			logrus.Infof("runtime threads:%d", runtime.NumGoroutine())
-		}
-		i++
+		destroy()
+		logrus.Infof("服务停止，threads:%d", runtime.NumGoroutine())
+	}()
+	conf.InitConf("./conf/config.json")
+	cache.Init()
+
+	if err := initSystem(); err != nil {
+		logrus.Error(err)
+		return
 	}
-	//logrus.SetFormatter(&logrus.JSONFormatter{})
-	//test.Exec()
-	//TestTCPClientAdvancedUsage()
-	//ExecOpc()
-	//go ExecRun("AAAA")
-	//go ExecRun("BBBB")
-	//for true {
-	//}
-	//TestParseJson()
-	// item := ItemConfig{Key: "1", RW: "r", Name: "Name"}
-	// fmt.Println(item.Name)
-	// c := make(chan PropertyMessage)
-	// go test.ExecHttpTest(c)
-	// // time.Sleep(time.Second)
-	// i := 1
-	// for data := range c {
-	// 	fmt.Println("data=", data.MessageId)
-	// 	fmt.Println("index=", i)
-	// 	i++
-	// 	if i > 10 {
-	// 		break
-	// 	}
-	// }
-	// for {
+	iot.InitIot()
+	server = web.Init(conf.GetConf().WebPort)
+	server.ListenAndServe()
 
-	// }
-	// keys := strings.Split("a[1].b.c", ".")
-	// keyTmp := keys[0]
-	// index := strings.Index(keyTmp, "[")
-	// index1 := strings.Index(keyTmp, "]")
-	// fmt.Println(index, index1, len(keyTmp))
-	// fmt.Println(keyTmp[index+1 : index1])
+}
 
-	// fmt.Println(len(keys))
-	// fmt.Println(keys[0])
-	// fmt.Println(strings.Join(keys[1:], "."))
-	//g := DataGateway{Device: Device{}}
-	//fmt.Println(g)
+func initSystem() error {
+	logrus.Infof("服务启动 init")
+	db.DBInit()
+	service.InitDictCache()
+	service.InitListener()
+	service.StartCron()
+	return nil
+}
+
+func destroy() {
+	logrus.Infof("收到停止指令 destroy")
+	iot.StopPull()
+	service.StopCron()
 }

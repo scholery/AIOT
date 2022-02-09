@@ -3,9 +3,10 @@ package test
 import (
 	"encoding/json"
 	"fmt"
-	"main/model"
-	. "main/model"
 	"time"
+
+	"koudai-box/iot/gateway/model"
+	. "koudai-box/iot/gateway/model"
 
 	"github.com/robertkrimen/otto"
 )

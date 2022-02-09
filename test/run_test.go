@@ -1,10 +1,12 @@
 package test
 
 import (
-	"main/service"
 	"runtime"
 	"testing"
 	"time"
+
+	"koudai-box/iot/gateway/service"
+	iot "koudai-box/iot/gateway/service"
 
 	"github.com/sirupsen/logrus"
 )
@@ -13,12 +15,12 @@ func TestRun(t *testing.T) {
 	logrus.SetLevel(logrus.InfoLevel)
 	service.Connect()
 	defer service.Close()
-	go service.StartPull()
+	go iot.StartPull()
 	i := 1
 	for {
 		time.Sleep(time.Second)
 		if i == 100 {
-			service.StopPull()
+			iot.StopPull()
 			break
 		}
 		if i == 10 {

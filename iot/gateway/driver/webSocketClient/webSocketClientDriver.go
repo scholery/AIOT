@@ -6,8 +6,6 @@ import (
 
 	"koudai-box/iot/gateway/model"
 	"koudai-box/iot/gateway/utils"
-
-	"github.com/sirupsen/logrus"
 )
 
 type WebSocketClientDriver struct {
@@ -51,7 +49,7 @@ func (webSocketClientDriver *WebSocketClientDriver) ExtracterProp(data interface
 	if !ok || len(function.Function) == 0 {
 		return nil, errors.New("function is null")
 	}
-	logrus.Debugf("Extracter funtion name=%s,function[%s]", model.Function_Extract_Prop, function.Function)
+	// logrus.Debugf("Extracter funtion name=%s,function[%s]", model.Function_Extract_Prop, function.Function)
 	return utils.ExecJS(function.Function, function.Key, data)
 }
 
@@ -84,6 +82,6 @@ func (webSocketClientDriver *WebSocketClientDriver) ExtracterEvent(data interfac
 	if !ok || len(function.Function) == 0 {
 		return nil, errors.New("function is null")
 	}
-	logrus.Debugf("Extracter funtion name=%s,function[%s]", model.Function_Extract_Event, function.Function)
+	// logrus.Debugf("Extracter funtion name=%s,function[%s]", model.Function_Extract_Event, function.Function)
 	return utils.ExecJS(function.Function, function.Key, data)
 }

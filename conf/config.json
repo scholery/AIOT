@@ -3,6 +3,7 @@
     "dbPath": "../work/db",
     "iotImagePath": "../work/iot",
     "tempPath": "../work/tmp",
+    "logLevel": "debug",
     "iotAlarmMaxCount": 5000,
     "iotEventMaxCount": 5000,
     "iotPropsMaxCount": 5000,

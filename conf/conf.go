@@ -21,6 +21,7 @@ type Configuration struct {
 	IotPropsPushHttptUrl        string `json:"iotPropsPushHttptUrl"`        //设备属性推送
 	IotDeviceStatusPushHttptUrl string `json:"iotDeviceStatusPushHttptUrl"` //设备心跳推送
 	DefaultSN                   string `json:"defaultSN"`                   //sn
+	LogLevel                    string `json:"logLevel"`                    //日志级别
 }
 
 var confBean *Configuration = nil

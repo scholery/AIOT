@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/robertkrimen/otto"
+	"github.com/sirupsen/logrus"
 )
 
 func ExecJS(function string, functionName string, param interface{}) (interface{}, error) {
@@ -15,6 +16,7 @@ func ExecJSWithContext(function string, functionName string, context interface{}
 }
 
 func doExecJS(vm *otto.Otto, function string, functionName string, param interface{}) (interface{}, error) {
+	logrus.Debugf("doExecJS funtion name=%s,function\r\n%s", functionName, function)
 	if vm == nil {
 		vm = otto.New()
 	}

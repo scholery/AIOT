@@ -67,7 +67,7 @@ func (modbusClientDriver *ModbusClientDriver) ExtracterProp(data interface{}, pr
 		return nil, errors.New("function is null")
 	}
 	// logrus.Debugf("Extracter funtion name=%s,function[%s]", model.Function_Extract_Prop, function.Function)
-	logrus.Debugf("Extracter funtion name=%s", model.Function_Extract_Prop)
+	// logrus.Debugf("Extracter funtion name=%s", model.Function_Extract_Prop)
 	return utils.ExecJS(function.Function, function.Key, data)
 }
 

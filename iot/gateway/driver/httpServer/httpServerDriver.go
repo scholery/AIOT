@@ -94,7 +94,7 @@ func (httpDriver *HttpServerDriver) ExtracterProp(data interface{}, product *mod
 	if !ok || len(function.Function) == 0 {
 		return nil, errors.New("function is null")
 	}
-	logrus.Debugf("Extracter funtion name=%s,function[%s]", model.Function_Extract_Prop, function.Function)
+	// logrus.Debugf("Extracter funtion name=%s,function[%s]", model.Function_Extract_Prop, function.Function)
 	return utils.ExecJS(function.Function, function.Key, data)
 }
 
@@ -122,6 +122,6 @@ func (httpDriver *HttpServerDriver) ExtracterEvent(data interface{}, product *mo
 	if !ok || len(function.Function) == 0 {
 		return nil, errors.New("function is null")
 	}
-	logrus.Debugf("Extracter funtion name=%s,function[%s]", model.Function_Extract_Event, function.Function)
+	// logrus.Debugf("Extracter funtion name=%s,function[%s]", model.Function_Extract_Event, function.Function)
 	return utils.ExecJS(function.Function, function.Key, data)
 }

@@ -19,7 +19,13 @@ import (
 )
 
 func main() {
-	logrus.SetLevel(logrus.InfoLevel)
+	conf.InitConf("./conf/config.json")
+	level, e := logrus.ParseLevel(conf.GetConf().LogLevel)
+	if e != nil {
+		logrus.SetLevel(logrus.InfoLevel)
+	} else {
+		logrus.SetLevel(level)
+	}
 
 	var server *http.Server
 	signal.Notify(global.SystemExitChannel, syscall.SIGINT)
@@ -34,7 +40,6 @@ func main() {
 		destroy()
 		logrus.Infof("服务停止，threads:%d", runtime.NumGoroutine())
 	}()
-	conf.InitConf("./conf/config.json")
 	cache.Init()
 
 	if err := initSystem(); err != nil {

@@ -66,7 +66,7 @@ func (OPCClientDriver *OPCClientDriver) ExtracterProp(data interface{}, product 
 	if !ok || len(function.Function) == 0 {
 		return nil, errors.New("function is null")
 	}
-	logrus.Debugf("Extracter funtion name=%s,function[%s]", model.Function_Extract_Prop, function.Function)
+	// logrus.Debugf("Extracter funtion name=%s,function[%s]", model.Function_Extract_Prop, function.Function)
 	return utils.ExecJS(function.Function, function.Key, data)
 }
 

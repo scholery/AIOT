@@ -26,7 +26,7 @@ func main() {
 	} else {
 		logrus.SetLevel(level)
 	}
-
+	logrus.Infof("logrus level:%s", level.String())
 	var server *http.Server
 	signal.Notify(global.SystemExitChannel, syscall.SIGINT)
 	signal.Notify(global.SystemExitChannel, syscall.SIGTERM)

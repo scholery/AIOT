@@ -3,7 +3,7 @@ export GO111MODULE=on
 ARMCC:=/usr/local/gcc-linaro-aarch64-linux-gnu/bin/aarch64-linux-gnu-gcc
 
 all:
-	go build -race -o service-iot main.go
+	go build -o service-iot main.go
 
 init:
 	go env -w GOPROXY=https://goproxy.cn,direct
@@ -19,7 +19,7 @@ arm64:
 	GOARCH=arm64  \
 	GOARM=7  \
 	CGO_ENABLED=1 \
-	go build -race -o service-iot main.go 
+	go build -o service-iot main.go 
 
 arm64_m2:
 	LD_PRELOAD="" \
@@ -28,7 +28,7 @@ arm64_m2:
 	GOARCH=arm64  \
 	GOARM=7  \
 	CGO_ENABLED=1 \
-	go build -race -o service-iot main.go 
+	go build -o service-iot main.go 
 
 r:all
 	./service-iot

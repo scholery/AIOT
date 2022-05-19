@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"koudai-box/global"
 	"koudai-box/iot/db"
 	"koudai-box/iot/gateway/model"
 
@@ -30,9 +31,31 @@ func GetLastestProperty(deviceId string) (gin.H, error) {
 	item := gin.H{
 		"id":         deviceProp.Id,
 		"properties": &properties_map,
-		"timestamp":  time.Unix(deviceProp.Timestamp, 0).Local().Format("2006-01-02 15:04:05"),
+		"timestamp":  time.Unix(deviceProp.Timestamp, 0).Local().Format(global.TIME_TEMPLATE),
 	}
 	return item, err
+}
+
+func GetProperties(deviceId string, count, begin, end int64) ([]gin.H, error) {
+	deviceProps, err := db.GetProperties(deviceId, count, begin, end)
+	if err != nil {
+		return nil, err
+	}
+	var items []gin.H
+	for _, deviceProp := range deviceProps {
+		properties_map := make(map[string]model.PropertyItem)
+		err = json.Unmarshal([]byte(deviceProp.Properties), &properties_map)
+		if err != nil {
+			continue
+		}
+		items = append(items, gin.H{
+			"id":         deviceProp.Id,
+			"properties": &properties_map,
+			"timestamp":  time.Unix(deviceProp.Timestamp, 0).Local().Format(global.TIME_TEMPLATE),
+		})
+	}
+
+	return items, err
 }
 
 func CalcPredayAvg(deviceId int) *model.PropertyMessage {
@@ -69,7 +92,9 @@ func CalcPredayAvg(deviceId int) *model.PropertyMessage {
 	}
 
 	return &model.PropertyMessage{
+		DeviceId:   fmt.Sprintf("%d", deviceId),
 		Properties: tmp,
+		Timestamp:  time.Now().Unix(),
 	}
 }
 

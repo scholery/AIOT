@@ -80,7 +80,7 @@ func DeleteEventService(ids []int) error {
 
 func QueryEventSerivce(request dto.QueryEventDataRequest) (int64, []*dto.EventItem) {
 	offset, limit := common.Page2Offset(request.PageNo, request.PageSize)
-	totalSize, events := db.QueryEventsByPage(offset, limit, request.Search, request.DeviceId, request.Level, request.StartTime, request.EndTime)
+	totalSize, events := db.QueryEventsByPage(offset, limit, request.Search, request.ProductId, request.ProductName, request.DeviceId, request.DeviceName, request.Type, request.Level, request.StartTime, request.EndTime)
 	var eventItems []*dto.EventItem
 	for _, event := range events {
 		eventItem := fixEventInfo(event)

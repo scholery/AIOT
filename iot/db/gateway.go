@@ -70,19 +70,17 @@ func UpdateGatewayStatus(gateway *Gateway) (int64, error) {
 }
 
 func DeleteGateway(gatewayId int) error {
-	webOrm.Begin()
 	// _, err := webOrm.Delete(&Gateway{Id: gatewayId})
 	_, err := webOrm.Update(&Gateway{Id: gatewayId, DelFlag: 1}, "del_flag")
 	if err != nil {
 		webOrm.Rollback()
 	}
-	webOrm.Commit()
 	return err
 }
 
 func QueryGatewayByID(gatewayId int) (*Gateway, error) {
 	var gateway Gateway
-	err := webOrm.QueryTable("gateway").Filter("id", gatewayId).One(&gateway)
+	err := webOrm.QueryTable("gateway").Filter("id", gatewayId).Filter("del_flag", 0).One(&gateway)
 	if err != nil {
 		return nil, err
 	}

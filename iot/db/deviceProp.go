@@ -26,6 +26,31 @@ func GetLastestProperty(deviceId string) (*DeviceProperty, error) {
 	return &prop, nil
 }
 
+func GetProperties(deviceId string, count, begin, end int64) ([]*DeviceProperty, error) {
+	var props []*DeviceProperty
+	qs := webOrm.QueryTable("device_property")
+	filter := qs.Filter("device_id", deviceId)
+	if begin > 0 {
+		filter = filter.Filter("timestamp__gte", begin)
+	}
+	if end > 0 {
+		filter = filter.Filter("timestamp__lte", end)
+	}
+	if count > 0 {
+		num, _ := filter.Count()
+		offset := num - count
+		if offset < 0 {
+			offset = 0
+		}
+		filter = filter.Limit(count, offset)
+	}
+	_, err := filter.All(&props)
+	if err != nil {
+		return nil, err
+	}
+	return props, nil
+}
+
 func DeleteOldProps(capacity int) error {
 	var item DeviceProperty
 	querySelector := webOrm.QueryTable("device_property")

@@ -56,3 +56,10 @@ type SetBatchDeviceActivateRequest struct {
 	Ids            []int `json:"ids" form:"ids" binding:"required"`
 	ActivateStatus *int  `json:"activateStatus"`
 }
+
+//设置设备状态
+type DevicePropertyRequest struct {
+	Count int64  `json:"count" form:"count"`
+	Begin string `json:"begin" form:"begin" `
+	End   string `json:"end" form:"end" `
+}

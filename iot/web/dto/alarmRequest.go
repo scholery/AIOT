@@ -25,11 +25,15 @@ type DeleteAlarmRequest struct {
 }
 
 type QueryAlarmDataRequest struct {
-	Search    string `json:"search" form:"search"`
-	DeviceId  string `json:"deviceId" form:"deviceId"`
-	Level     string `json:"level" form:"level"`
-	StartTime string `json:"startTime" form:"startTime"`
-	EndTime   string `json:"endTime" form:"endTime"`
-	PageNo    int    `json:"pageNo" form:"pageNo"`
-	PageSize  int    `json:"pageSize" form:"pageSize"`
+	Search      string `json:"search" form:"search"`
+	ProductId   string `json:"productId" form:"productId"`
+	ProductName string `json:"productName" form:"productName"`
+	DeviceId    string `json:"deviceId" form:"deviceId"`
+	DeviceName  string `json:"deviceName" form:"deviceName"`
+	Level       string `json:"level" form:"level"`
+	Type        string `json:"type" form:"type"`
+	StartTime   string `json:"startTime" form:"startTime"`
+	EndTime     string `json:"endTime" form:"endTime"`
+	PageNo      int    `json:"pageNo" form:"pageNo"`
+	PageSize    int    `json:"pageSize" form:"pageSize"`
 }

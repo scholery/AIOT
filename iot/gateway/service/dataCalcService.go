@@ -19,10 +19,12 @@ type DataGatewayApi interface {
 	Calculater(data interface{}) (interface{}, error)
 	//告警过滤接口
 	FilterAlarm(data model.PropertyMessage) (interface{}, error)
-	//数据存储接口
-	LoaderMessage(data model.PropertyMessage) (interface{}, error)
-	//数据存储接口
-	LoaderAlarm(data model.IotEventMessage) (interface{}, error)
+	//存储属性
+	LoaderProperty(data model.PropertyMessage, push bool) (bool, error)
+	//存储告警
+	LoaderAlarm(data model.IotEventMessage, push bool) (bool, error)
+	//存储事件
+	LoadeEvent(data model.EventMessage, push bool) (bool, error)
 	//数据存储接口
 	Push(interface{}, string) bool
 }
@@ -50,7 +52,7 @@ func (gateway *DataGateway) Calculater(data interface{}) (interface{}, error) {
 	context := make(map[string]interface{})
 	context["device"] = device
 	context["status"] = deviceStatus
-	return utils.ExecJSWithContext(js_calc, function.Key, context, data)
+	return utils.ExecJSWithContext(function.Function, function.Key, context, data)
 }
 
 const js_calc = `
@@ -133,7 +135,7 @@ func (gateway *DataGateway) FilterAlarm(data model.PropertyMessage) ([]interface
 /**
  *消息存储
  */
-func (gateway *DataGateway) LoaderProperty(data model.PropertyMessage) (bool, error) {
+func (gateway *DataGateway) LoaderProperty(data model.PropertyMessage, push bool) (bool, error) {
 	logrus.Debugf("save prop,message id = %s", data.MessageId)
 	prop := orm.DeviceProperty{
 		DeviceId:   data.DeviceId,
@@ -143,7 +145,13 @@ func (gateway *DataGateway) LoaderProperty(data model.PropertyMessage) (bool, er
 		CreateTime: time.Now(),
 		PushFlag:   0,
 	}
-	orm.InsertProperty(prop)
+	if _, err := orm.InsertProperty(prop); err != nil {
+		return false, err
+	}
+	if push {
+		return Push(data, model.Message_Type_Prop), nil
+	}
+	//属性推送
 	return true, nil
 
 }
@@ -151,7 +159,7 @@ func (gateway *DataGateway) LoaderProperty(data model.PropertyMessage) (bool, er
 /**
  *告警存储
  */
-func (gateway *DataGateway) LoaderAlarm(data model.IotEventMessage) (bool, error) {
+func (gateway *DataGateway) LoaderAlarm(data model.IotEventMessage, push bool) (bool, error) {
 	logrus.Debugf("save alarm,message id = %s", data.MessageId)
 	alarm := orm.Alarm{
 		ProductId:   gateway.Device.Product.Id,
@@ -171,14 +179,19 @@ func (gateway *DataGateway) LoaderAlarm(data model.IotEventMessage) (bool, error
 		CreateTime:  time.Now(),
 		PushFlag:    0,
 	}
-	orm.InsertAlarm(alarm)
+	if _, err := orm.InsertAlarm(alarm); err != nil {
+		return false, err
+	}
+	if push {
+		return Push(data, model.Message_Type_Iot_Event), nil
+	}
 	return true, nil
 }
 
 /**
  *事件存储
  */
-func (gateway *DataGateway) LoadeEvent(data model.EventMessage) (bool, error) {
+func (gateway *DataGateway) LoadeEvent(data model.EventMessage, push bool) (bool, error) {
 	logrus.Debugf("save event,message id = %s", data.MessageId)
 	prop := orm.Event{
 		ProductId:   gateway.Device.Product.Id,
@@ -196,7 +209,12 @@ func (gateway *DataGateway) LoadeEvent(data model.EventMessage) (bool, error) {
 		CreateTime:  time.Now(),
 		PushFlag:    0,
 	}
-	orm.InsertEvent(prop)
+	if _, err := orm.InsertEvent(prop); err != nil {
+		return false, err
+	}
+	if push {
+		return Push(data, model.Message_Type_Event), nil
+	}
 	return true, nil
 
 }

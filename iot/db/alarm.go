@@ -1,6 +1,7 @@
 package db
 
 import (
+	"koudai-box/global"
 	"time"
 
 	"github.com/astaxie/beego/orm"
@@ -27,26 +28,22 @@ func UpdateAlarm(alarm *Alarm) (int64, error) {
 }
 
 func DeleteAlarm(alarmId int) error {
-	webOrm.Begin()
 	_, err := webOrm.Delete(&Alarm{Id: alarmId}, "id")
 	if err != nil {
 		webOrm.Rollback()
 	}
-	webOrm.Commit()
 	return err
 }
 
 func DeleteAlarmByAlarmId(alarmId string) error {
-	webOrm.Begin()
 	_, err := webOrm.Delete(&Alarm{MessageId: alarmId}, "message_id")
 	if err != nil {
 		webOrm.Rollback()
 	}
-	webOrm.Commit()
 	return err
 }
 
-func QueryAlarmsByPage(offset, limit int, search, deviceId, level, startTime, endTime string) (int64, []*Alarm) {
+func QueryAlarmsByPage(offset, limit int, search, productId, productName, deviceId, deviceName, alarmType, level, startTime, endTime string) (int64, []*Alarm) {
 	var childrenItem []*Alarm
 	querySelector := webOrm.QueryTable("alarm")
 
@@ -57,14 +54,26 @@ func QueryAlarmsByPage(offset, limit int, search, deviceId, level, startTime, en
 		cond1 = cond1.Or("code__contains", search).Or("title__contains", search)
 		cond = cond.AndCond(cond1)
 	}
+	if len(productId) > 0 {
+		cond = cond.And("productId", productId)
+	}
+	if len(productName) > 0 {
+		cond = cond.And("productName__contains", productName)
+	}
 	if len(deviceId) > 0 {
 		cond = cond.And("deviceId", deviceId)
+	}
+	if len(deviceName) > 0 {
+		cond = cond.And("deviceName__contains", deviceName)
+	}
+	if len(alarmType) > 0 {
+		cond = cond.And("type", alarmType)
 	}
 	if len(level) > 0 {
 		cond = cond.And("level", level)
 	}
 	if len(startTime) > 0 && len(endTime) > 0 {
-		var timeTemplate = "2006-01-02 15:04:05"
+		var timeTemplate = global.TIME_TEMPLATE
 		stamp, _ := time.ParseInLocation(timeTemplate, startTime, time.Local)
 		etamp, _ := time.ParseInLocation(timeTemplate, endTime, time.Local)
 
@@ -94,7 +103,8 @@ func QueryAllAlarms() (int64, []*Alarm) {
 //总告警数量
 func CountTotalAlarms() int64 {
 	qs := webOrm.QueryTable("alarm")
-	count, _ := qs.Count()
+	cond := orm.NewCondition()
+	count, _ := qs.SetCond(cond).Count()
 	return count
 }
 

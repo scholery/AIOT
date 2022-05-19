@@ -16,10 +16,12 @@ type ProductItem struct {
 	DisabledDeviceCount int      `json:"disabledDeviceCount"`
 	OnlineDeviceCount   int      `json:"onlineDeviceCount"`
 	OfflineDeviceCount  int      `json:"offlineDeviceCount"`
+	UnknownDeviceCount  int      `json:"unknownDeviceCount"`
 }
 
 //列表结构
 type ProductItemConfigItem struct {
+	Sort           int               `json:"sort"`
 	Key            string            `json:"key"`
 	Code           string            `json:"code"`
 	SourceCode     string            `json:"sourceCode"`

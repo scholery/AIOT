@@ -33,6 +33,7 @@ func startExecDevicePropPull(driver driver.Driver, device model.Device, dataComb
 			})
 			if err != nil {
 				logrus.Errorf("cron[%s] of gateway %s is error", cron, driver.GetGatewayConfig().Key)
+				return
 			}
 			c.Start()
 		} else {
@@ -55,6 +56,7 @@ func startExecDevicePropPull(driver driver.Driver, device model.Device, dataComb
 				})
 				if err != nil {
 					logrus.Errorf("cron[%s] of gateway %s is error", cron, driver.GetGatewayConfig().Key)
+					return
 				}
 				c.Start()
 			} else {
@@ -225,7 +227,7 @@ func doExecDevicePropBatch(driver driver.Driver, gateway *model.GatewayConfig, d
 	for _, p := range products {
 		datas, err := driver.ExtracterProp(data, p)
 		if err != nil {
-			logrus.Errorf("doExecDevicePropBatch ExtracterProp product[%s] error", p.Key)
+			logrus.Errorf("doExecDevicePropBatch ExtracterProp product[%s] error[%v]", p.Key, err)
 			continue
 		}
 		dataMap, ok := datas.(map[string]interface{})
@@ -296,7 +298,7 @@ func ExecDevicePropCalc(data model.PropertyMessage, device model.Device) {
 				logrus.Errorf("Calculater error,Unmarshal convert res error:%+v,err:%+v", res, err)
 				return
 			} else {
-				logrus.Errorf("Calculater,Marshal convert res:%+v", res)
+				logrus.Debugf("Calculater,Marshal convert res:%+v", res)
 			}
 			r = m
 		}
@@ -309,9 +311,7 @@ func ExecDevicePropCalc(data model.PropertyMessage, device model.Device) {
 		return
 	}
 	//数据存储
-	dataGateway.LoaderProperty(tmpP)
-	//属性推送
-	Push(tmpP, model.Message_Type_Prop)
+	dataGateway.LoaderProperty(tmpP, true)
 	//更新缓存的最新状态
 	status.PutDeviceLastProp(device.Id, tmpP)
 	//告警过滤
@@ -326,10 +326,8 @@ func ExecDevicePropCalc(data model.PropertyMessage, device model.Device) {
 		if !ok {
 			logrus.Error("alarm is null")
 		}
-		//告警推送
-		Push(tmpA, model.Message_Type_Iot_Event)
 		//告警存储
-		dataGateway.LoaderAlarm(tmpA)
+		dataGateway.LoaderAlarm(tmpA, true)
 	}
 	elapsed := time.Since(start)
 	logrus.Debugf("ExecCalc[%s]数据计算执行完成耗时：%+v", device.Key, elapsed)

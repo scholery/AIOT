@@ -20,9 +20,10 @@ var run bool = true
 var runLock sync.Mutex
 
 //设备运行状态控制
-var deviceRunLock sync.Mutex
-var deviceStatusLock sync.Mutex
-var gatewayRunLock sync.Mutex
+var deviceRunLock sync.RWMutex
+var deviceStatusLock sync.RWMutex
+var deviceTimerLock sync.Mutex
+var gatewayRunLock sync.RWMutex
 var deviceThreads map[int]*model.Device = make(map[int]*model.Device)
 var deviceCrons map[int]*cron.Cron = make(map[int]*cron.Cron)
 var deviceTimers map[int]*time.Timer = make(map[int]*time.Timer)
@@ -56,8 +57,11 @@ func IsDeviceRunning(id int) bool {
 	if !run {
 		return false
 	}
+
+	deviceRunLock.RLock()
+	defer deviceRunLock.RUnlock()
 	_, ok := deviceThreads[id]
-	return run && ok
+	return ok
 }
 
 func IsGatewayRunning(gatewayId int) bool {
@@ -97,9 +101,10 @@ func StartGateway(gateway *model.GatewayConfig, device *model.Device) {
 }
 
 func StopGateway(id int) {
+	driver, ok := GetDriver(id)
+	//放前面会死锁
 	gatewayRunLock.Lock()
 	defer gatewayRunLock.Unlock()
-	driver, ok := GetDriver(id)
 	if ok {
 		driver.Stop()
 		delete(cache_drivers, id)
@@ -126,7 +131,7 @@ func StartDevice(device *model.Device) {
 	//状态重置
 	model.StatusMsgChan <- model.StatusMsg{
 		DeviceId: device.Id,
-		Status:   model.STATUS_ALL,
+		Status:   model.STATUS_UNKNOWN,
 	}
 }
 
@@ -140,6 +145,8 @@ func StopDevice(device *model.Device) {
 		cron.Stop()
 		delete(deviceCrons, device.Id)
 	}
+	deviceTimerLock.Lock()
+	defer deviceTimerLock.Unlock()
 	timer, ok := deviceTimers[device.Id]
 	if ok {
 		logrus.Debugf("stop device[%s]'s timer", device.Key)
@@ -160,7 +167,7 @@ func StopDevice(device *model.Device) {
 	//状态重置
 	model.StatusMsgChan <- model.StatusMsg{
 		DeviceId: device.Id,
-		Status:   model.STATUS_ALL,
+		Status:   model.STATUS_UNKNOWN,
 	}
 }
 
@@ -172,14 +179,24 @@ func PutDeviceLastProp(deviceId int, prop model.PropertyMessage) {
 		status = &model.DeviceStatus{
 			Id:     deviceId,
 			Key:    prop.DeviceSign,
-			Status: model.STATUS_ALL,
+			Status: model.STATUS_UNKNOWN,
 		}
 	}
 	status.LastStatus = &prop
+	if status.ZeroStatus == nil {
+		zeroStatus := *status.LastStatus
+		status.ZeroStatus = &zeroStatus
+	}
+	if status.PreDayStatus == nil {
+		preDayStatus := *status.LastStatus
+		status.PreDayStatus = &preDayStatus
+	}
 	cache_deviceStatus[deviceId] = status
 }
 
 func GetDeviceLastProp(deviceId int) (model.PropertyMessage, bool) {
+	deviceStatusLock.RLock()
+	defer deviceStatusLock.RUnlock()
 	status, ok := cache_deviceStatus[deviceId]
 	if !ok || status.LastStatus == nil {
 		return model.PropertyMessage{}, ok
@@ -188,14 +205,24 @@ func GetDeviceLastProp(deviceId int) (model.PropertyMessage, bool) {
 }
 
 func GetDeviceStatus(deviceId int) *model.DeviceStatus {
+	deviceStatusLock.RLock()
 	status, ok := cache_deviceStatus[deviceId]
+	deviceStatusLock.RUnlock()
 	if !ok {
 		deviceStatusLock.Lock()
 		defer deviceStatusLock.Unlock()
-		status = &model.DeviceStatus{Id: deviceId, Status: model.STATUS_ALL, Timestamp: time.Now().Unix()}
+		status = &model.DeviceStatus{Id: deviceId, Status: model.STATUS_UNKNOWN, Timestamp: time.Now().Unix()}
 		cache_deviceStatus[deviceId] = status
 	}
 	return status
+}
+
+func GetDevice(deviceId int) *model.Device {
+	device, ok := deviceThreads[deviceId]
+	if ok {
+		return device
+	}
+	return nil
 }
 
 func PutDriver(gatewayId int, driver driver.Driver) {
@@ -205,6 +232,8 @@ func PutDriver(gatewayId int, driver driver.Driver) {
 }
 
 func GetDriver(gatewayId int) (driver.Driver, bool) {
+	gatewayRunLock.RLock()
+	defer gatewayRunLock.RUnlock()
 	driver, ok := cache_drivers[gatewayId]
 	return driver, ok
 }
@@ -220,6 +249,8 @@ func GetDeviceCron(deviceId int) *cron.Cron {
 }
 
 func SetDeviceTimer(deviceId int, timer *time.Timer) {
+	deviceTimerLock.Lock()
+	defer deviceTimerLock.Unlock()
 	deviceTimers[deviceId] = timer
 }
 
@@ -323,16 +354,22 @@ func ReloadCacheData() {
 	for _, item := range items {
 		status := &model.DeviceStatus{
 			Id:        item.DeviceId,
-			Status:    model.STATUS_ALL,
+			Status:    model.STATUS_UNKNOWN,
 			Timestamp: item.Timestamp,
 		}
-		var t1, t2, t3 *model.PropertyMessage
-		json.Unmarshal([]byte(item.LastStatus), t1)
-		json.Unmarshal([]byte(item.ZeroStatus), t2)
-		json.Unmarshal([]byte(item.PreDayStatus), t3)
-		status.LastStatus = t1
-		status.ZeroStatus = t2
-		status.PreDayStatus = t3
+		var t1, t2, t3 model.PropertyMessage
+		err := json.Unmarshal([]byte(item.LastStatus), &t1)
+		if err == nil && t1.Timestamp > 0 {
+			status.LastStatus = &t1
+		}
+		err = json.Unmarshal([]byte(item.ZeroStatus), &t2)
+		if err == nil && t2.Timestamp > 0 {
+			status.ZeroStatus = &t2
+		}
+		err = json.Unmarshal([]byte(item.PreDayStatus), &t3)
+		if err == nil && t3.Timestamp > 0 {
+			status.PreDayStatus = &t3
+		}
 		tmp1[item.DeviceId] = status
 	}
 	deviceStatusLock.Lock()
@@ -383,7 +420,9 @@ func CacheDataAsyncSave() {
 	}
 
 	logrus.Info("device status save")
-	for _, status := range cache_deviceStatus {
+
+	cache_deviceStatus_tmp := cache_deviceStatus
+	for _, status := range cache_deviceStatus_tmp {
 		err := db.SaveDeviceStatus(db.DeviceStatus{
 			DeviceId:     status.Id,
 			Status:       status.Status,

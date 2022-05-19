@@ -3,12 +3,18 @@ package modbusClient
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"koudai-box/iot/gateway/model"
 
 	"github.com/sirupsen/logrus"
 	modbus "github.com/things-go/go-modbus"
+)
+
+const (
+	RETRY    = 3 //重试次数
+	TIME_OUT = 1 //秒
 )
 
 //httpserver
@@ -52,7 +58,7 @@ func ConnectModbusRTU(gateway *model.GatewayConfig) error {
 	} else {
 		p.StopBits = 1
 	}
-	p.Timeout = 1000 * time.Millisecond
+	p.Timeout = TIME_OUT * time.Second
 	client := modbus.NewClient(p)
 	client.LogMode(true)
 	err := client.Connect()
@@ -113,6 +119,14 @@ func QueryValue(gateway *model.GatewayConfig, device *model.Device, item model.I
 		quantity = item.Quantity
 	}
 	value, err := client.ReadHoldingRegisters(byte(slaveId), uint16(start), uint16(quantity))
+	if err != nil {
+		//	错误重试
+		for i := 1; i <= RETRY && err != nil && strings.Contains(err.Error(), "timeout"); i++ {
+			time.Sleep(TIME_OUT * time.Second)
+			logrus.Errorf("modbus[%s]'s salveId[%x],address[%x] timeout retry:%d", gateway.Key, slaveId, start, i)
+			value, err = client.ReadHoldingRegisters(byte(slaveId), uint16(start), uint16(quantity))
+		}
+	}
 	if err != nil {
 		logrus.Errorf("modbus[%s]'s salveId[%x],address[%x] ReadHoldingRegisters err,%+v", gateway.Key, slaveId, start, err)
 		return nil, fmt.Errorf("modbus[%s]'s salveId[%x],address[%x] ReadHoldingRegisters err,%+v", gateway.Key, slaveId, start, err)

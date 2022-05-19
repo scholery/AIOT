@@ -67,9 +67,9 @@ func GetPropertyItem(item model.ItemConfig, value interface{}) model.PropertyIte
 		}
 	}
 	if val != 0 {
-		return model.PropertyItem{Code: item.Code, Name: item.Name, Value: val, DataType: item.DataType}
+		return model.PropertyItem{Sort: item.Sort, Code: item.Code, Name: item.Name, Value: val, DataType: item.DataType}
 	}
-	return model.PropertyItem{Code: item.Code, Name: item.Name, Value: value, DataType: item.DataType}
+	return model.PropertyItem{Sort: item.Sort, Code: item.Code, Name: item.Name, Value: value, DataType: item.DataType}
 }
 func GetMapValue(dataMap map[string]interface{}, key string) interface{} {
 	keys := strings.Split(key, ".")

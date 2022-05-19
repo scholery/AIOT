@@ -3,8 +3,10 @@ package service
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
+	"koudai-box/global"
 	"koudai-box/iot/db"
 	"koudai-box/iot/gateway/utils"
 	"koudai-box/iot/web/dto"
@@ -17,15 +19,22 @@ func AddProductAlarmService(request dto.AddProductAlarmDataRequest) error {
 		return err
 	}
 	configs := product.AlarmConfigs
-	var operationConfigs []dto.ProductAlarmConfig
-	err = json.Unmarshal([]byte(configs), &operationConfigs)
+	var productAlarmConfigs []dto.ProductAlarmConfig
+	err = json.Unmarshal([]byte(configs), &productAlarmConfigs)
 	if err != nil {
 		logger.Errorln(err)
 		return err
 	}
+	for _, item := range productAlarmConfigs {
+		if item.Code == request.Code {
+			return fmt.Errorf("告警标识[%s]已存在，不可重复", request.Code)
+		} else if item.Name == request.Name {
+			return fmt.Errorf("告警名称[%s]已存在，不可重复", request.Name)
+		}
+	}
 
 	//组装数据
-	operationConfig := dto.ProductAlarmConfig{
+	productAlarmConfig := dto.ProductAlarmConfig{
 		Key:        utils.GetUUID(),
 		Level:      request.Level,
 		Name:       request.Name,
@@ -35,13 +44,13 @@ func AddProductAlarmService(request dto.AddProductAlarmDataRequest) error {
 		Operations: request.Operations,
 		Message:    request.Message,
 		Desc:       request.Desc,
-		CreateTime: time.Now().Local().Format("2006-01-02 15:04:05"),
+		CreateTime: time.Now().Local().Format(global.TIME_TEMPLATE),
 		State:      request.State,
 	}
 
-	operationConfigs = append(operationConfigs, operationConfig)
+	productAlarmConfigs = append(productAlarmConfigs, productAlarmConfig)
 
-	b, err := json.Marshal(operationConfigs)
+	b, err := json.Marshal(productAlarmConfigs)
 	if err != nil {
 		logger.Errorln(err)
 		return err
@@ -57,8 +66,8 @@ func UpdateProductAlarmService(request dto.UpdateProductAlarmDataRequest) error 
 		return err
 	}
 	items := product.AlarmConfigs
-	var operationConfigs []dto.ProductAlarmConfig
-	err = json.Unmarshal([]byte(items), &operationConfigs)
+	var productAlarmConfig []dto.ProductAlarmConfig
+	err = json.Unmarshal([]byte(items), &productAlarmConfig)
 	if err != nil {
 		logger.Errorln(err)
 		return err
@@ -76,21 +85,27 @@ func UpdateProductAlarmService(request dto.UpdateProductAlarmDataRequest) error 
 		Message:    request.Message,
 		Desc:       request.Desc,
 		State:      request.State,
+		CreateTime: time.Now().Local().Format(global.TIME_TEMPLATE),
 	}
 
 	pos := -1
-	for index, item := range operationConfigs {
+	for index, item := range productAlarmConfig {
 		if item.Key == request.Key {
 			pos = index
+			operationConfig.CreateTime = item.CreateTime
+		} else if item.Code == request.Code {
+			return fmt.Errorf("告警标识[%s]已存在，不可重复", request.Code)
+		} else if item.Name == request.Name {
+			return fmt.Errorf("告警名称[%s]已存在，不可重复", request.Name)
 		}
 	}
 	if pos == -1 {
-		return errors.New("没有找到操作")
+		return fmt.Errorf("告警定义信息[%s]不存在", request.Code)
 	}
 	//替换数据
-	operationConfigs[pos] = operationConfig
+	productAlarmConfig[pos] = operationConfig
 
-	b, err := json.Marshal(operationConfigs)
+	b, err := json.Marshal(productAlarmConfig)
 	if err != nil {
 		logger.Errorln(err)
 		return err

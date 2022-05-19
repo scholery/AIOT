@@ -2,7 +2,6 @@ package common
 
 var STATUS_OK = "0"
 var STATUS_ERROR = "1"
-var DATEFORMAT = "2006-01-02 15:04:05"
 
 //批量导入文件名解析规则定义
 const FACEFILENAMEPART_NAME = "0"

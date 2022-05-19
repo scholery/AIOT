@@ -1,14 +1,20 @@
 package service
 
 import (
+	"encoding/base64"
 	"errors"
+	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
 
 	"koudai-box/cache"
+	"koudai-box/conf"
+	"koudai-box/global"
 
 	"koudai-box/iot/db"
+	"koudai-box/iot/gateway/model"
 	"koudai-box/iot/web/common"
 	"koudai-box/iot/web/dto"
 
@@ -100,6 +106,7 @@ func QueryProductSerivce(request dto.QueryProductDataRequest) (int64, []*dto.Pro
 		disabledDeviceCount := 0
 		onlineDeviceCount := 0
 		offlineDeviceCount := 0
+		unknownDeviceCount := 0
 
 		//设备的状态
 		for _, device := range devices {
@@ -110,10 +117,12 @@ func QueryProductSerivce(request dto.QueryProductDataRequest) (int64, []*dto.Pro
 					disabledDeviceCount = disabledDeviceCount + 1
 				}
 
-				if device.RunningStatus == 1 {
+				if device.RunningStatus == model.STATUS_ACTIVE {
 					onlineDeviceCount = onlineDeviceCount + 1
-				} else {
+				} else if device.RunningStatus == model.STATUS_DISACTIVE {
 					offlineDeviceCount = offlineDeviceCount + 1
+				} else if device.RunningStatus == model.STATUS_UNKNOWN {
+					unknownDeviceCount = unknownDeviceCount + 1
 				}
 			}
 		}
@@ -124,13 +133,14 @@ func QueryProductSerivce(request dto.QueryProductDataRequest) (int64, []*dto.Pro
 			Name:                product.Name,
 			Desc:                product.Desc,
 			Code:                product.Code,
-			Image:               product.Image,
+			Image:               GetProductImageById(product.Id),
 			GatewayId:           product.GatewayId,
 			Category:            strings.Split(product.Category, ","),
 			DeviceCount:         deviceCount,
 			DisabledDeviceCount: disabledDeviceCount,
 			OnlineDeviceCount:   onlineDeviceCount,
 			OfflineDeviceCount:  offlineDeviceCount,
+			UnknownDeviceCount:  unknownDeviceCount,
 		}
 		list = append(list, &productItem)
 	}
@@ -145,16 +155,17 @@ func DetailProductSerivce(id int) (map[string]interface{}, error) {
 		return nil, err
 	}
 	data := map[string]interface{}{
-		"id":          product.Id,
-		"name":        product.Name,
-		"state":       product.State,
-		"code":        product.Code,
-		"gatewayId":   product.GatewayId,
-		"image":       product.Image,
+		"id":        product.Id,
+		"name":      product.Name,
+		"state":     product.State,
+		"code":      product.Code,
+		"gatewayId": product.GatewayId,
+		// "image":       product.Image,
+		"image":       GetProductImageById(product.Id),
 		"category":    strings.Split(product.Category, ","),
 		"desc":        product.Desc,
-		"createTime":  product.CreateTime.Local().Format("2006-01-02 15:04:05"),
-		"publishTime": product.PublishTime.Local().Format("2006-01-02 15:04:05"),
+		"createTime":  product.CreateTime.Local().Format(global.TIME_TEMPLATE),
+		"publishTime": product.PublishTime.Local().Format(global.TIME_TEMPLATE),
 	}
 
 	//设备数量
@@ -247,4 +258,32 @@ func QueryProductsByGateWayId(gateWayId int) []*db.Device {
 	productIds = append(productIds, gateWayId)
 	devices := db.QueryDevicetByProductIds(productIds)
 	return devices
+}
+
+//读取产品图片
+func GetProductImageById(productId int) string {
+	product, err := db.QueryProductByID(productId)
+	if err != nil || len(product.Image) == 0 {
+		return ""
+	}
+	imagePath := product.Image
+	if !strings.Contains(imagePath, conf.GetConf().IotImagePath) {
+		imagePath = path.Join(conf.GetConf().IotImagePath, product.Image)
+	}
+	logrus.Debugf("product image path:%s", imagePath)
+	file, err := os.ReadFile(imagePath)
+	if err != nil {
+		logrus.Errorf("get product[%s]'s image[%s] error.%+v", product.Code, imagePath, err)
+		return ""
+	}
+	content := base64.StdEncoding.EncodeToString(file)
+
+	if len(content) > 0 {
+		t := path.Ext(imagePath)
+		if strings.Index(t, ".") == 0 {
+			t = t[1:]
+		}
+		content = "data:image/" + t + ";base64," + content
+	}
+	return content
 }

@@ -105,8 +105,7 @@ func ExecCalc(data model.PropertyMessage) {
 		logrus.Error("calc error")
 		return
 	}
-	dataGateway.LoaderProperty(tmpP)
-	service.Push(tmpP, service.Router_prop)
+	dataGateway.LoaderProperty(tmpP, true)
 	alarms, err := dataGateway.FilterAlarm(tmpP)
 	if err != nil {
 		logrus.Error(err)
@@ -117,8 +116,7 @@ func ExecCalc(data model.PropertyMessage) {
 		if !ok {
 			logrus.Error("alarm is null")
 		}
-		service.Push(tmpA, service.Router_prop)
-		dataGateway.LoaderAlarm(tmpA)
+		dataGateway.LoaderAlarm(tmpA, true)
 	}
 	elapsed := time.Since(start)
 	logrus.Info("ExecCalc执行完成耗时：", elapsed)

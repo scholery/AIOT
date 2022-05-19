@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"koudai-box/cache"
+	"koudai-box/global"
 
 	"koudai-box/iot/db"
 	"koudai-box/iot/web/common"
@@ -21,7 +22,7 @@ const (
 )
 
 var alarmLock = sync.Mutex{}
-var timeTemplate = "2006-01-02 15:04:05"
+var timeTemplate = global.TIME_TEMPLATE
 
 func AddAlarmService(request dto.SaveAlarmRequest) (int64, error) {
 	alarmLock.Lock()
@@ -81,7 +82,7 @@ func DeleteAlarmService(ids []string) error {
 
 func QueryAlarmSerivce(request dto.QueryAlarmDataRequest) (int64, []*dto.AlarmItem) {
 	offset, limit := common.Page2Offset(request.PageNo, request.PageSize)
-	totalSize, alarms := db.QueryAlarmsByPage(offset, limit, request.Search, request.DeviceId, request.Level, request.StartTime, request.EndTime)
+	totalSize, alarms := db.QueryAlarmsByPage(offset, limit, request.Search, request.ProductId, request.ProductName, request.DeviceId, request.DeviceName, request.Type, request.Level, request.StartTime, request.EndTime)
 	var alarmItems []*dto.AlarmItem
 	for _, alarm := range alarms {
 		alarmItem := fixAlarmInfo(alarm)

@@ -16,7 +16,7 @@ func InsertProduct(product Product) (int64, error) {
 
 func QueryProductByIDs(productIds []int) []*Product {
 	var products []*Product
-	qs := webOrm.QueryTable("product").Filter("id__in", productIds)
+	qs := webOrm.QueryTable("product").Filter("del_flag", 0).Filter("id__in", productIds)
 
 	qs.All(&products)
 	return products
@@ -71,7 +71,7 @@ func QueryAllProductByStateCount(state int) int64 {
 //更加id查询
 func QueryProductByID(id int) (*Product, error) {
 	var product Product
-	err := webOrm.QueryTable("product").Filter("id", id).One(&product)
+	err := webOrm.QueryTable("product").Filter("id", id).Filter("del_flag", 0).One(&product)
 	if err != nil {
 		logger.Errorln(err)
 		return nil, err

@@ -17,26 +17,22 @@ func InsertEvent(event Event) (int64, error) {
 }
 
 func UpdateEvent(event *Event) (int64, error) {
-	webOrm.Begin()
 	num, err := webOrm.Update(event, "title", "sign", "type", "level", "device_id", "product_id", "create_time")
 	if err != nil {
 		webOrm.Rollback()
 	}
-	webOrm.Commit()
 	return num, err
 }
 
 func DeleteEvent(eventId int) error {
-	webOrm.Begin()
 	_, err := webOrm.Delete(&Event{Id: eventId}, "id")
 	if err != nil {
 		webOrm.Rollback()
 	}
-	webOrm.Commit()
 	return err
 }
 
-func QueryEventsByPage(offset, limit int, search, deviceId, level, startTime string, endTime string) (int64, []*Event) {
+func QueryEventsByPage(offset, limit int, search, productId, productName, deviceId, deviceName, eventType, level, startTime string, endTime string) (int64, []*Event) {
 	var childrenItem []*Event
 	querySelector := webOrm.QueryTable("event")
 
@@ -47,8 +43,20 @@ func QueryEventsByPage(offset, limit int, search, deviceId, level, startTime str
 		cond1 = cond1.Or("sign__contains", search).Or("title__contains", search)
 		cond = cond.AndCond(cond1)
 	}
+	if len(productId) > 0 {
+		cond = cond.And("productId", productId)
+	}
+	if len(productName) > 0 {
+		cond = cond.And("productName__contains", productName)
+	}
 	if len(deviceId) > 0 {
 		cond = cond.And("deviceId", deviceId)
+	}
+	if len(deviceName) > 0 {
+		cond = cond.And("deviceName__contains", deviceName)
+	}
+	if len(eventType) > 0 {
+		cond = cond.And("type", eventType)
 	}
 	if len(level) > 0 {
 		cond = cond.And("level", level)

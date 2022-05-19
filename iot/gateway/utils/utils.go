@@ -32,7 +32,7 @@ func Abs(x int) int {
 func PropCompareEQ(val1 interface{}, val2 interface{}, dataType model.ItemDataType) bool {
 	noChange := false
 	switch dataType.Type {
-	case model.Int32:
+	case model.Int32, model.Int64, model.Long:
 		v1 := fmt.Sprintf("%d", val1)
 		v2 := fmt.Sprintf("%d", val2)
 		t1, ok1 := strconv.Atoi(v1)
@@ -41,7 +41,7 @@ func PropCompareEQ(val1 interface{}, val2 interface{}, dataType model.ItemDataTy
 		if ok1 == nil && ok2 == nil && err == nil {
 			noChange = Abs(t1-t2) <= s
 		}
-	case model.Float:
+	case model.Float, model.Double:
 		v1 := fmt.Sprintf("%f", val1)
 		v2 := fmt.Sprintf("%f", val2)
 		t1, ok1 := strconv.ParseFloat(v1, 64)
@@ -79,7 +79,7 @@ func MatchContidion(prop model.PropertyMessage, condition model.Condition) bool 
 func Compare(val1 interface{}, val2 interface{}, dataType model.DataType) int {
 	res := 0
 	switch dataType {
-	case model.Int32:
+	case model.Int32, model.Int64, model.Long:
 		v1 := fmt.Sprintf("%+v", val1)
 		v2 := fmt.Sprintf("%+v", val2)
 		t1, _ := strconv.Atoi(v1)
@@ -89,7 +89,7 @@ func Compare(val1 interface{}, val2 interface{}, dataType model.DataType) int {
 		} else if t1 < t2 {
 			res = -1
 		}
-	case model.Float:
+	case model.Float, model.Double:
 		v1 := fmt.Sprintf("%+v", val1)
 		v2 := fmt.Sprintf("%+v", val2)
 		t1, _ := strconv.ParseFloat(v1, 64)
@@ -100,6 +100,10 @@ func Compare(val1 interface{}, val2 interface{}, dataType model.DataType) int {
 			res = -1
 		}
 	case model.Text:
+		t1 := fmt.Sprintf("%+v", val1)
+		t2 := fmt.Sprintf("%+v", val2)
+		res = strings.Compare(t1, t2)
+	default:
 		t1 := fmt.Sprintf("%+v", val1)
 		t2 := fmt.Sprintf("%+v", val2)
 		res = strings.Compare(t1, t2)

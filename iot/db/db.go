@@ -15,6 +15,7 @@ import (
 
 func DBInit() {
 	orm.DefaultRowsLimit = common.MAX_LIMIT
+	orm.Debug = false
 	//os.MkdirAll("db", 0660)
 	os.MkdirAll(conf.GetConf().DbPath, os.ModePerm)
 	os.MkdirAll(conf.GetConf().TempPath, os.ModePerm)

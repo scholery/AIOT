@@ -1,6 +1,7 @@
 package db
 
 import (
+	"koudai-box/global"
 	"time"
 
 	"github.com/astaxie/beego/orm"
@@ -33,7 +34,7 @@ func QueryOperationRecordByPage(offset, limit int, search, deviceId, level, star
 		cond = cond.And("level", level)
 	}
 	if len(startTime) > 0 && len(endTime) > 0 {
-		var timeTemplate = "2006-01-02 15:04:05"
+		var timeTemplate = global.TIME_TEMPLATE
 		stamp, _ := time.ParseInLocation(timeTemplate, startTime, time.Local)
 		etamp, _ := time.ParseInLocation(timeTemplate, endTime, time.Local)
 

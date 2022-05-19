@@ -31,50 +31,63 @@ func StartPull() {
 		logrus.Error("GetGatewayConfigs is null")
 		return
 	}
+	ASyncStatusDatas()
 	status.Start()
 	for _, gateway := range gatewayConfigs {
 		StartGatewayPull(gateway)
 	}
-	ASyncStatusDatas()
-	go MessageListener()
+	MessageListener()
 }
 
 func MessageListener() {
+	go propListener()
+	go eventListener()
+	go pushListener()
+}
+
+func propListener() {
 	for status.IsRunning() {
-		select {
-		case tmp := <-model.PropMessChan: //解析后的设备属性后处理
-			model.StatusMsgChan <- model.StatusMsg{
-				DeviceId: tmp.Device.Id,
-				Status:   model.STATUS_ACTIVE,
+		tmp := <-model.PropMessChan //解析后的设备属性后处理
+		model.StatusMsgChan <- model.StatusMsg{
+			DeviceId: tmp.Device.Id,
+			Status:   model.STATUS_ACTIVE,
+		}
+		go ExecDevicePropCalc(tmp.PropertyMessage, *tmp.Device)
+	}
+}
+
+func eventListener() {
+	for status.IsRunning() {
+		evt := <-model.EventMessChan //解析后的事件后处理
+		go ExecDeviceEventCalc(evt.EventMessage, *evt.Device)
+	}
+}
+
+func pushListener() {
+	for status.IsRunning() {
+		msg := <-model.PushMsgChan //推送消息解析
+		if len(msg.GatewayKey) == 0 {
+			logrus.Errorf("gateway is nil,msg:%s", msg.Msg)
+			continue
+		}
+		if msg.Msg == nil {
+			logrus.Errorf("ws:gateway[%s]'s msg is null,msg:%s", msg.GatewayKey, msg.Msg)
+			continue
+		}
+		if len(msg.DeviceKey) == 0 {
+			if len(msg.Type) == 0 || msg.Type == model.Msg_Type_Props {
+				go PushGatewayDeviceProps(msg.GatewayKey, msg.Msg)
 			}
-			go ExecDevicePropCalc(tmp.PropertyMessage, *tmp.Device)
-		case evt := <-model.EventMessChan: //解析后的事件后处理
-			go ExecDeviceEventCalc(evt.EventMessage, *evt.Device)
-		case msg := <-model.PushMsgChan: //推送消息解析
-			if len(msg.GatewayKey) == 0 {
-				logrus.Errorf("gateway is nil,msg:%s", msg.Msg)
-				continue
+			if len(msg.Type) == 0 || msg.Type == model.Msg_Type_Events {
+				go PushGatewayEvents(msg.GatewayKey, msg.Msg)
 			}
-			if msg.Msg == nil {
-				logrus.Errorf("ws:gateway[%s]'s msg is null,msg:%s", msg.GatewayKey, msg.Msg)
-				continue
+		} else {
+			if len(msg.Type) == 0 || msg.Type == model.Msg_Type_Props {
+				go PushDeviceProps(msg.GatewayKey, msg.DeviceKey, msg.Msg)
 			}
-			if len(msg.DeviceKey) == 0 {
-				if len(msg.Type) == 0 || msg.Type == model.Msg_Type_Props {
-					go PushGatewayDeviceProps(msg.GatewayKey, msg.Msg)
-				}
-				if len(msg.Type) == 0 || msg.Type == model.Msg_Type_Events {
-					go PushGatewayEvents(msg.GatewayKey, msg.Msg)
-				}
-			} else {
-				if len(msg.Type) == 0 || msg.Type == model.Msg_Type_Props {
-					go PushDeviceProps(msg.GatewayKey, msg.DeviceKey, msg.Msg)
-				}
-				if len(msg.Type) == 0 || msg.Type == model.Msg_Type_Events {
-					go PushDeviceEvents(msg.GatewayKey, msg.DeviceKey, msg.Msg)
-				}
+			if len(msg.Type) == 0 || msg.Type == model.Msg_Type_Events {
+				go PushDeviceEvents(msg.GatewayKey, msg.DeviceKey, msg.Msg)
 			}
-		default:
 		}
 	}
 }
@@ -149,6 +162,8 @@ func StartDevicePull(driver driver.Driver, device model.Device) {
 	logrus.Infof("StartDevicePull device[%s]", device.Key)
 	gateway := driver.GetGatewayConfig()
 
+	status.StartDevice(&device)
+
 	switch gateway.Protocol {
 	case model.Geteway_Protocol_HTTP_Client:
 		getPropApi, ok := gateway.ApiConfigs[model.API_GetProp]
@@ -192,8 +207,7 @@ func StartDevicePull(driver driver.Driver, device model.Device) {
 	case model.Geteway_Protocol_LwM2M:
 	case model.Geteway_Protocol_BACnet_IP:
 	}
-
-	status.StartDevice(&device)
+	//防止批量不执行
 	status.StartGateway(gateway, &device)
 }
 
@@ -357,6 +371,17 @@ func SetZeroStatus(deviceId int) {
 func SetPredayStatus(deviceId int, preday *model.PropertyMessage) {
 	dStatus := status.GetDeviceStatus(deviceId)
 	dStatus.PreDayStatus = preday
+}
+
+func ResetStatus(deviceId int) {
+	dStatus := status.GetDeviceStatus(deviceId)
+	dStatus.ZeroStatus = dStatus.LastStatus
+	dStatus.PreDayStatus = dStatus.LastStatus
+}
+
+func GetDeviceStatus(deviceId int) *model.DeviceStatus {
+	dStatus := status.GetDeviceStatus(deviceId)
+	return dStatus
 }
 
 /*************************************对外接口 结束**********************************************/

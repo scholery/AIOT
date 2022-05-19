@@ -5,7 +5,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
+	"koudai-box/global"
 	"koudai-box/iot/db"
 	"koudai-box/iot/gateway/model"
 	"koudai-box/iot/gateway/utils"
@@ -13,7 +15,6 @@ import (
 	"koudai-box/iot/web/dto"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 var deviceLock = sync.Mutex{}
@@ -61,6 +62,7 @@ func UpdateDeviceService(request dto.UpdateDeviceRequest) (int, error) {
 	device.Geo = request.Geo
 	device.Locale = request.Locale
 	device.ExtProps = utils.ToString(request.ExtProps)
+	device.UpdateTime = time.Now()
 
 	err = db.UpdateDevice(device)
 	if err != nil {
@@ -100,7 +102,6 @@ func QueryDeviceSerivce(request dto.QueryDeviceDataRequest) (int64, []gin.H) {
 			}
 		}
 
-		logrus.Infoln(device.CreateTime)
 		item := gin.H{
 			"id":             device.Id,
 			"name":           device.Name,
@@ -110,8 +111,8 @@ func QueryDeviceSerivce(request dto.QueryDeviceDataRequest) (int64, []gin.H) {
 			"SourceId":       device.SourceId,
 			"Geo":            device.Geo,
 			"Locale":         device.Locale,
-			"createTime":     device.CreateTime.Local().Format("2006-01-02 15:04:05"),
-			"updateTime":     device.UpdateTime.Local().Format("2006-01-02 15:04:05"),
+			"createTime":     device.CreateTime.Local().Format(global.TIME_TEMPLATE),
+			"updateTime":     device.UpdateTime.Local().Format(global.TIME_TEMPLATE),
 			"desc":           device.Desc,
 			"ExtProps":       utils.ToMap(device.ExtProps),
 		}
@@ -128,7 +129,7 @@ func QueryDeviceSerivce(request dto.QueryDeviceDataRequest) (int64, []gin.H) {
 }
 
 func QueryDeviceIdsByActivateStatus(activateStatus int) []int {
-	devices := db.QueryDevicesByStatus(activateStatus, -1)
+	devices := db.QueryDevicesByStatus(activateStatus, model.STATUS_ALL)
 	var list []int = make([]int, 0)
 	for _, device := range devices {
 		list = append(list, device.Id)
@@ -158,8 +159,8 @@ func QueryDeviceInfoByID(deviceId int) (gin.H, error) {
 		"SourceId":       deviceInfo.SourceId,
 		"Geo":            deviceInfo.Geo,
 		"Locale":         deviceInfo.Locale,
-		"createTime":     deviceInfo.CreateTime.Local().Format("2006-01-02 15:04:05"),
-		"updateTime":     deviceInfo.UpdateTime.Local().Format("2006-01-02 15:04:05"),
+		"createTime":     deviceInfo.CreateTime.Local().Format(global.TIME_TEMPLATE),
+		"updateTime":     deviceInfo.UpdateTime.Local().Format(global.TIME_TEMPLATE),
 		"desc":           deviceInfo.Desc,
 		"ExtProps":       utils.ToMap(deviceInfo.ExtProps),
 	}
@@ -171,7 +172,8 @@ func QueryDeviceInfoByID(deviceId int) (gin.H, error) {
 		if selectProduct != nil {
 			item["productName"] = selectProduct.Name
 			item["productCode"] = selectProduct.Code
-			item["image"] = selectProduct.Image
+			// item["image"] = selectProduct.Image
+			item["image"] = GetProductImageById(selectProduct.Id)
 			item["productId"] = selectProduct.Id
 
 			//产品品类
@@ -209,10 +211,11 @@ func QueryDeviceInfoByID(deviceId int) (gin.H, error) {
 //统计设备信息
 func StatisticsDeviceSerivce() gin.H {
 	total := db.QueryAllDeviceCount()
-	publicCount := db.QueryAllDeviceByStateCount(1)
-	noPublicCount := db.QueryAllDeviceByStateCount(0)
-	offlineCount := db.QueryAllDeviceByOnlineCount(0)
-	onlineCount := db.QueryAllDeviceByOnlineCount(1)
+	publicCount := db.QueryAllDeviceByStateCount(model.STATUS_ACTIVE)
+	noPublicCount := db.QueryAllDeviceByStateCount(model.STATUS_DISACTIVE)
+	offlineCount := db.QueryAllDeviceByOnlineCount(model.STATUS_DISACTIVE)
+	onlineCount := db.QueryAllDeviceByOnlineCount(model.STATUS_ACTIVE)
+	unknownCount := db.QueryAllDeviceByOnlineCount(model.STATUS_UNKNOWN)
 	// fmt.Println("offlineCount", offlineCount)
 	return gin.H{
 		"total":         total,
@@ -220,6 +223,7 @@ func StatisticsDeviceSerivce() gin.H {
 		"noPublicCount": noPublicCount,
 		"offlineCount":  offlineCount,
 		"onlineCount":   onlineCount,
+		"unknownCount":  unknownCount,
 	}
 }
 
@@ -243,38 +247,46 @@ func DeleteDeviceSerivce(id int) error {
 }
 
 //设置状态
-func SetDeviceStatusSerivce(id, activateStatus int) error {
+func SetDeviceStatusSerivce(id, activateStatus int) (bool, error) {
 	device, err := db.QueryDeviceByID(id)
 	if err != nil {
-		return err
+		return false, err
+	}
+	if device.ActivateStatus == activateStatus {
+		return false, nil
 	}
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
 
 	//设置
 	device.ActivateStatus = activateStatus
-	device.RunningStatus = model.STATUS_DISACTIVE
+	device.RunningStatus = model.STATUS_UNKNOWN
+	device.UpdateTime = time.Now()
 	//推送
 	PushDevice(device)
 
-	return db.UpdateDevice(device)
+	return true, db.UpdateDevice(device)
 }
 
 //设置运行状态
-func SetDeviceRunningStatus(id, runningStatus int) error {
+func SetDeviceRunningStatus(id, runningStatus int) (bool, error) {
 	device, err := db.QueryDeviceByID(id)
 	if err != nil {
-		return err
+		return false, err
+	}
+	if device.RunningStatus == runningStatus {
+		return false, nil
 	}
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
 
 	//设置
 	device.RunningStatus = runningStatus
+	device.UpdateTime = time.Now()
 	//推送
 	PushDevice(device)
 
-	return db.UpdateDevice(device)
+	return true, db.UpdateDevice(device)
 }
 
 // func SetDeviceActivateStatus(deviceId, activateStatus int) error {
@@ -322,7 +334,6 @@ func PushAllDevices() error {
 }
 
 func PushDevice(device *db.Device) {
-	selectProduct, _ := db.QueryProductByID(device.ProductId)
 	devMsg := model.DeviceMessage{
 		DeviceId:       device.Id,
 		Key:            device.Code,
@@ -334,11 +345,49 @@ func PushDevice(device *db.Device) {
 		RunningStatus:  device.RunningStatus,
 		Desc:           device.Desc,
 		ExtProps:       utils.ToMap(device.ExtProps),
-		UpdateTime:     device.UpdateTime.Format("2006-01-02 15:04:05"),
+		CreateTime:     device.CreateTime.Format(global.TIME_TEMPLATE),
+		UpdateTime:     device.UpdateTime.Format(global.TIME_TEMPLATE),
 		DelFlag:        device.DelFlag,
 	}
+	selectProduct, _ := db.QueryProductByID(device.ProductId)
 	if selectProduct != nil {
 		devMsg.Category = selectProduct.Category
+		devMsg.ProductName = selectProduct.Name
+		devMsg.ProductCode = selectProduct.Code
+		devMsg.ProductId = selectProduct.Id
+		devMsg.Image = GetProductImageById(selectProduct.Id)
+
+		//产品品类
+		categorys := strings.Split(selectProduct.Category, ",")
+		lastCategory := categorys[len(categorys)-1]
+		dictList, _ := db.ListDictAll()
+		for _, d := range dictList {
+			if lastCategory == d.Value {
+				devMsg.CategoryName = d.Name
+				break
+			}
+		}
+
+		if selectProduct.GatewayId != 0 {
+			//网关
+			gateway, _ := db.QueryGatewayByID(selectProduct.GatewayId)
+			if gateway != nil {
+				devMsg.GatewayName = gateway.Name
+				devMsg.GateWayId = selectProduct.GatewayId
+				for _, d := range dictList {
+					if gateway.Protocol == d.Value {
+						devMsg.GatewayProtocol = gateway.Protocol
+						devMsg.GatewayProtocolName = d.Name
+						devMsg.GatewayModbusConfig = gateway.ModbusConfig
+						devMsg.GatewayCollectPeriod = gateway.CollectPeriod
+						devMsg.GatewayCollectType = gateway.CollectType
+						devMsg.GatewaySign = gateway.Sign
+						devMsg.GatewayDescribe = gateway.Describe
+						break
+					}
+				}
+			}
+		}
 	}
 	model.PushOutMsgChan <- model.Message{
 		SN:    utils.GetSN(),

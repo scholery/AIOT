@@ -38,9 +38,10 @@ const (
 	DataCombination_Array  = "array"  //批量
 )
 const (
-	STATUS_ALL       = -1 //状态：不生效，全部状态
-	STATUS_ACTIVE    = 1  //状态：启用、激活
-	STATUS_DISACTIVE = 0  //状态：停用、非激活
+	STATUS_ALL       = -99 //状态：不生效，全部状态
+	STATUS_ACTIVE    = 1   //状态：启用、激活
+	STATUS_DISACTIVE = 0   //状态：停用、非激活
+	STATUS_UNKNOWN   = -1  //状态：未知
 	STATUS_SUCCESS   = 1
 	STATUS_ERROR     = 0
 )
@@ -48,6 +49,11 @@ const (
 const (
 	Msg_Type_Props  = "props"
 	Msg_Type_Events = "events"
+)
+
+const (
+	Alarm_Type_Alarm = "alarm"
+	Alarm_Type_Event = "event"
 )
 
 /**********************************消息通道************************************************/
@@ -114,6 +120,7 @@ type Product struct {
 
 /**物模型定义**/
 type ItemConfig struct {
+	Sort           int          `json:"sort"`
 	Key            string       `json:"key"`
 	Code           string       `json:"code"`
 	Name           string       `json:"name"`

@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"koudai-box/iot/gateway/model"
 	"strconv"
 	"strings"
 
@@ -22,7 +23,7 @@ func QueryDevicetByProductIds(productIds []int) []*Device {
 	qs := webOrm.QueryTable("device")
 
 	cond := orm.NewCondition()
-	cond = cond.And("productId__in", productIds)
+	cond = cond.And("productId__in", productIds).And("del_flag", 0)
 	qs = qs.SetCond(cond)
 
 	qs.All(&devices)
@@ -32,7 +33,7 @@ func QueryDevicetByProductIds(productIds []int) []*Device {
 //更加id查询
 func QueryDeviceByID(id int) (*Device, error) {
 	var device Device
-	err := webOrm.QueryTable("device").Filter("id", id).One(&device)
+	err := webOrm.QueryTable("device").Filter("id", id).Filter("del_flag", 0).One(&device)
 	if err != nil {
 		logger.Errorln(err)
 		return nil, err
@@ -42,13 +43,11 @@ func QueryDeviceByID(id int) (*Device, error) {
 
 //更新
 func UpdateDevice(device *Device) error {
-	webOrm.Begin()
 	_, err := webOrm.Update(device)
 	if err != nil {
 		logger.Errorln(err)
 		webOrm.Rollback()
 	}
-	webOrm.Commit()
 	return err
 }
 
@@ -59,11 +58,11 @@ func QueryDeviceByPage(offset, limit int, search string, activateStatus int, run
 	cond := orm.NewCondition()
 	cond = cond.And("del_flag", 0)
 
-	if activateStatus != -1 {
+	if activateStatus != model.STATUS_ALL {
 		cond = cond.And("activateStatus", activateStatus)
 	}
 
-	if runningStatus != -1 {
+	if runningStatus != model.STATUS_ALL {
 		cond = cond.And("runningStatus", runningStatus)
 	}
 
@@ -89,7 +88,7 @@ func QueryDeviceByPage(offset, limit int, search string, activateStatus int, run
 func QueryDevices() ([]*Device, error) {
 	var devices []*Device
 	qs := webOrm.QueryTable("device")
-	_, err := qs.OrderBy("-createTime").All(&devices)
+	_, err := qs.Filter("del_flag", 0).OrderBy("-createTime").All(&devices)
 	if err != nil {
 		logger.Errorln(err)
 		return nil, err
@@ -103,11 +102,11 @@ func QueryDevicesByStatus(activateStatus int, runningStatus int) []*Device {
 	cond := orm.NewCondition()
 	cond = cond.And("del_flag", 0)
 
-	if activateStatus != -1 {
+	if activateStatus != model.STATUS_ALL {
 		cond = cond.And("activateStatus", activateStatus)
 	}
 
-	if runningStatus != -1 {
+	if runningStatus != model.STATUS_ALL {
 		cond = cond.And("runningStatus", runningStatus)
 	}
 	qs = qs.SetCond(cond)

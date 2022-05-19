@@ -12,6 +12,7 @@ import (
 
 	"koudai-box/iot/db"
 	iot "koudai-box/iot/gateway/service"
+	"koudai-box/iot/listener"
 	"koudai-box/iot/service"
 	"koudai-box/iot/web"
 
@@ -56,7 +57,7 @@ func initSystem() error {
 	logrus.Infof("服务启动 init")
 	db.DBInit()
 	service.InitDictCache()
-	service.InitListener()
+	listener.InitListener()
 	service.StartCron()
 	return nil
 }

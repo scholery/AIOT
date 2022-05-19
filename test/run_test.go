@@ -43,8 +43,6 @@ func run() {
 			logrus.Info("stop:", stop)
 		case tmp := <-data:
 			logrus.Info("data:", tmp)
-		default:
-			logrus.Info("default:")
 		}
 	}
 	logrus.Info("run over")

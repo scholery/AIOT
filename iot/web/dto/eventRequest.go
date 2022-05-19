@@ -26,11 +26,15 @@ type DeleteEventRequest struct {
 }
 
 type QueryEventDataRequest struct {
-	Search    string `json:"search" form:"search"`
-	DeviceId  string `json:"deviceId" form:"deviceId"`
-	Level     string `json:"level" form:"level"`
-	StartTime string `json:"startTime" form:"startTime"`
-	EndTime   string `json:"endTime" form:"endTime"`
-	PageNo    int    `json:"pageNo" form:"pageNo"`
-	PageSize  int    `json:"PageSize" form:"PageSize"`
+	Search      string `json:"search" form:"search"`
+	ProductId   string `json:"productId" form:"productId"`
+	ProductName string `json:"productName" form:"productName"`
+	DeviceId    string `json:"deviceId" form:"deviceId"`
+	DeviceName  string `json:"deviceName" form:"deviceName"`
+	Type        string `json:"type" form:"type"`
+	Level       string `json:"level" form:"level"`
+	StartTime   string `json:"startTime" form:"startTime"`
+	EndTime     string `json:"endTime" form:"endTime"`
+	PageNo      int    `json:"pageNo" form:"pageNo"`
+	PageSize    int    `json:"PageSize" form:"PageSize"`
 }

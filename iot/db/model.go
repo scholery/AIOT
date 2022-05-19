@@ -111,7 +111,7 @@ type Product struct {
 	CreateTime       time.Time  `json:"createTime" orm:"auto_now_add;type(datetime)"`           //'创建时间'
 	PublishTime      *time.Time `json:"publishTime" orm:"column(publish_time);type(datetime)"`  //'发布时间'
 	State            int        `json:"state"`                                                  //状态 0-未发布,1-发布
-	DelFlag          int        `json:"delFlag" orm:"auto_now_add;default(0)"`                  //0:默认1:删除'
+	DelFlag          int        `json:"delFlag" orm:"default(0)"`                               //0:默认1:删除'
 }
 
 //设备信息表
@@ -124,12 +124,12 @@ type Device struct {
 	Locale         string    `json:"locale"`                                       //位置描述
 	ProductId      int       `json:"productId"`                                    //产品id
 	ActivateStatus int       `json:"activateStatus"`                               //状态 0 未激活   1 激活
-	RunningStatus  int       `json:"runningStatus" orm:"auto_now_add;default(-1)"` //是否在线 0 不在线 1 在线
+	RunningStatus  int       `json:"runningStatus" orm:"default(-1)"`              //是否在线 0 不在线 1 在线
 	Desc           string    `json:"desc" orm:"type(text)"`                        //排序
 	ExtProps       string    `json:"extProps" orm:"type(text)"`                    //扩展属性
 	CreateTime     time.Time `json:"createTime" orm:"auto_now_add;type(datetime)"` //创建时间
-	UpdateTime     time.Time `json:"updateTime" orm:"auto_now_add;type(datetime)"` //更新时间
-	DelFlag        int       `json:"delFlag" orm:"auto_now_add;default(0)"`        //删除标识 0 未删除  1 删除
+	UpdateTime     time.Time `json:"updateTime" orm:"auto_now;type(datetime)"`     //更新时间
+	DelFlag        int       `json:"delFlag" orm:"default(0)"`                     //删除标识 0 未删除  1 删除
 }
 
 //设备信息表

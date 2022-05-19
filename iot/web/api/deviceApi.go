@@ -13,12 +13,14 @@ import (
 	"time"
 
 	"koudai-box/conf"
+	"koudai-box/global"
 
 	"koudai-box/iot/db"
 	"koudai-box/iot/service"
 	"koudai-box/iot/web/common"
 	"koudai-box/iot/web/dto"
 
+	"koudai-box/iot/gateway/model"
 	iot "koudai-box/iot/gateway/service"
 
 	"github.com/gin-gonic/gin"
@@ -39,6 +41,8 @@ func RegisterDeviceURL(r *gin.RouterGroup) {
 	r.POST("/device/batchActivates", setDeviceBatchActivates) //批量激活  批量停止
 	r.GET("/device/allActivate", allDeviceActivate)           //全部激活
 	r.GET("/device/currentSituation/:id", queryDeviceCurrentSituation)
+	r.GET("/device/:id/properties", queryDeviceProperties)
+	r.GET("/device/status/:id", queryDeviceStatus)
 
 	r.GET("/device/excelTemplate", excelTemplate)
 	r.POST("/device/export", export)
@@ -49,6 +53,7 @@ func RegisterDeviceURL(r *gin.RouterGroup) {
 	//操作下发
 	r.Any("/device/zerostatus/:id", setZerostatus)
 	r.Any("/device/calcpredayavg/:id", CalcPredayAvg)
+	r.Any("/device/reset/:id", reset)
 
 }
 
@@ -178,19 +183,23 @@ func setDeviceActivateStatus(c *gin.Context) {
 		c.JSON(http.StatusOK, common.Ok("设置完成", nil))
 		return
 	}
-	err = service.SetDeviceStatusSerivce(request.Id, *request.ActivateStatus)
+	res, err := service.SetDeviceStatusSerivce(request.Id, *request.ActivateStatus)
 	if err != nil {
 		c.JSON(http.StatusOK, common.Error(err.Error(), nil))
 		return
 	}
 	ok := false
-	if *request.ActivateStatus == 0 {
+	if !res {
+	} else if *request.ActivateStatus == model.STATUS_DISACTIVE {
 		ok = iot.StopDevice(request.Id)
-	} else {
+	} else if *request.ActivateStatus == model.STATUS_ACTIVE {
 		ok = iot.StartDevice(request.Id)
 	}
 	if !ok {
 		logrus.Errorf("change device[%d]'s state error", request.Id)
+		c.JSON(http.StatusOK, common.Error("设置失败", gin.H{
+			"deviceId": request.Id,
+		}))
 		return
 	}
 
@@ -209,64 +218,90 @@ func setDeviceBatchActivates(c *gin.Context) {
 		c.JSON(http.StatusOK, common.Error("状态异常", nil))
 		return
 	}
-
+	var errs []string
 	for _, deviceId := range requests.Ids {
-		deviceInfo, err := service.QueryDeviceById(deviceId)
-		if err != nil {
-			c.JSON(http.StatusOK, common.Error("查询设备失败", nil))
-			return
-		}
-		if deviceInfo == nil {
-			c.JSON(http.StatusOK, common.Error("设备不存在", nil))
-			return
-		}
-		if deviceInfo.ActivateStatus == *requests.ActivateStatus {
-			c.JSON(http.StatusOK, common.Ok("设置完成", nil))
-			return
-		}
-		err = service.SetDeviceStatusSerivce(deviceId, *requests.ActivateStatus)
-		if err != nil {
-			c.JSON(http.StatusOK, common.Error(err.Error(), nil))
-			return
+		res, err := service.SetDeviceStatusSerivce(deviceId, *requests.ActivateStatus)
+		if !res {
+			if err != nil {
+				errs = append(errs, err.Error())
+			}
+			continue
 		}
 		ok := false
-		if *requests.ActivateStatus == 0 {
+		if *requests.ActivateStatus == model.STATUS_DISACTIVE {
 			ok = iot.StopDevice(deviceId)
 		} else {
 			ok = iot.StartDevice(deviceId)
 		}
 		if !ok {
-			logrus.Errorf("change device[%d]'s state error", deviceId)
+			errs = append(errs, fmt.Sprintf("change device[%d]'s state error", deviceId))
 			continue
 		}
 
 	}
-	c.JSON(http.StatusOK, common.Ok("设置成功", nil))
+	if len(errs) > 0 {
+		c.JSON(http.StatusOK, common.Error("设置失败", errs))
+	} else {
+		c.JSON(http.StatusOK, common.Ok("设置成功", nil))
+	}
 }
 
 func allDeviceActivate(c *gin.Context) {
 	unActivateDeviceIds := service.QueryDeviceIdsByActivateStatus(0)
+	var errs []string
 	for _, deviceId := range unActivateDeviceIds {
-
-		err := service.SetDeviceStatusSerivce(deviceId, 1)
-		if err != nil {
-			c.JSON(http.StatusOK, common.Error(err.Error(), nil))
-			return
-		}
-		ok := false
-		ok = iot.StartDevice(deviceId)
-		if !ok {
-			logrus.Errorf("change device[%d]'s state error", deviceId)
+		res, err := service.SetDeviceStatusSerivce(deviceId, 1)
+		if !res {
+			if err != nil {
+				errs = append(errs, err.Error())
+			}
 			continue
 		}
-
+		ok := iot.StartDevice(deviceId)
+		if !ok {
+			errs = append(errs, fmt.Sprintf("change device[%d]'s state error", deviceId))
+			continue
+		}
 	}
-	c.JSON(http.StatusOK, common.Ok("设置成功", nil))
+	if len(errs) > 0 {
+		c.JSON(http.StatusOK, common.Error("设置失败", errs))
+	} else {
+		c.JSON(http.StatusOK, common.Ok("设置成功", nil))
+	}
 }
 
 func queryDeviceCurrentSituation(c *gin.Context) {
 	deviceID := c.Param("id")
 	deviceProps, _ := service.GetLastestProperty(deviceID)
+	c.JSON(http.StatusOK, common.Ok("获取成功", deviceProps))
+}
+
+func queryDeviceProperties(c *gin.Context) {
+	var request dto.DevicePropertyRequest
+	if err := c.ShouldBind(&request); err != nil {
+		c.JSON(http.StatusOK, common.Error(err.Error(), nil))
+		return
+	}
+	id := c.Param("id")
+	deviceId, _ := strconv.Atoi(id)
+	if deviceId <= 0 {
+		c.JSON(http.StatusOK, common.Error("设备id错误", nil))
+		return
+	}
+
+	var timeTemplate = global.TIME_TEMPLATE
+	var begin int64 = 0
+	var end int64 = 0
+	if len(request.Begin) > 0 {
+		stamp, _ := time.ParseInLocation(timeTemplate, request.Begin, time.Local)
+		begin = stamp.Unix()
+	}
+	if len(request.End) > 0 {
+		stamp, _ := time.ParseInLocation(timeTemplate, request.End, time.Local)
+		end = stamp.Unix()
+	}
+
+	deviceProps, _ := service.GetProperties(id, request.Count, begin, end)
 	c.JSON(http.StatusOK, common.Ok("获取成功", deviceProps))
 }
 
@@ -468,4 +503,26 @@ func CalcPredayAvg(c *gin.Context) {
 	preday := service.CalcPredayAvg(deviceId)
 	iot.SetPredayStatus(deviceId, preday)
 	c.JSON(http.StatusOK, common.Ok("计算成功", nil))
+}
+
+func reset(c *gin.Context) {
+	id := c.Param("id")
+	deviceId, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusOK, common.Error("参数错误", err.Error()))
+		return
+	}
+	iot.ResetStatus(deviceId)
+	c.JSON(http.StatusOK, common.Ok("重置成功", nil))
+}
+
+func queryDeviceStatus(c *gin.Context) {
+	id := c.Param("id")
+	deviceId, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusOK, common.Error("参数错误", err.Error()))
+		return
+	}
+	status := iot.GetDeviceStatus(deviceId)
+	c.JSON(http.StatusOK, common.Ok("计算成功", status))
 }

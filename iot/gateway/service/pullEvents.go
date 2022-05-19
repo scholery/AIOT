@@ -29,6 +29,7 @@ func startExecEventPull(driver driver.Driver, device model.Device, dataCombinati
 			})
 			if err != nil {
 				logrus.Errorf("cron[%s] of gateway %s is error", cron, driver.GetGatewayConfig().Key)
+				return
 			}
 			c.Start()
 		} else {
@@ -51,6 +52,7 @@ func startExecEventPull(driver driver.Driver, device model.Device, dataCombinati
 				})
 				if err != nil {
 					logrus.Errorf("cron[%s] of gateway %s is error", cron, driver.GetGatewayConfig().Key)
+					return
 				}
 				c.Start()
 			} else {
@@ -93,6 +95,10 @@ func ExecDeviceEventPush(gatewayKey string, deviceKey string, data interface{}) 
  *执行设备连接并抽取事件，单条
  */
 func ExecDeviceEventPull(driver driver.Driver, device *model.Device, period int) {
+	if device == nil {
+		logrus.Errorf("ExecDeviceEventPull device is null,gateway[%s]", driver.GetGatewayConfig().Key)
+		return
+	}
 	gateway := driver.GetGatewayConfig()
 	//判断是否停止
 	if nil != device && !status.IsDeviceRunning(device.Id) {
@@ -240,9 +246,7 @@ func ExecDeviceEventCalc(data model.EventMessage, device model.Device) {
 	dataGateway := &DataGateway{Device: &device}
 	logrus.Debugf("EventMessage：%+v", data)
 	//数据存储
-	dataGateway.LoadeEvent(data)
-	//属性推送
-	Push(data, model.Message_Type_Event)
+	dataGateway.LoadeEvent(data, true)
 	elapsed := time.Since(start)
 	logrus.Debugf("ExecDeviceEventCalc[%s]事件计算执行完成耗时：%+v", device.Key, elapsed)
 }

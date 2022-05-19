@@ -57,7 +57,7 @@ func fetchData(address string, method string, params []model.Parameter) (interfa
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		logrus.Error("resp.StatusCode:", resp.StatusCode)
+		logrus.Errorf("addr:%s,resp.StatusCode:%d", address, resp.StatusCode)
 		return nil, fmt.Errorf("resp.StatusCode=%d", resp.StatusCode)
 	}
 

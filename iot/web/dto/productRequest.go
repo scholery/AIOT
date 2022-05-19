@@ -43,6 +43,7 @@ type QueryProductDataRequest struct {
 
 //添加产品物模型
 type AddProductItemDataRequest struct {
+	Sort           int            `json:"sort"`
 	ProductId      int            `json:"productId" form:"productId" binding:"required"` //产品ID
 	Code           string         `json:"code" form:"code" binding:"required"`           //属性标识
 	SourceCode     string         `json:"sourceCode" form:"sourceCode" binding:""`       //源属性标识
@@ -73,6 +74,7 @@ type AddProductItemDataRequest struct {
 
 //更新产品物模型
 type UpdateProductItemDataRequest struct {
+	Sort           int            `json:"sort"`
 	ProductId      int            `json:"productId" form:"productId" binding:"required"` //产品ID
 	Key            string         `json:"key" form:"key" binding:"required"`             //key
 	Code           string         `json:"code" form:"code" binding:"required"`           //属性标识
@@ -104,6 +106,7 @@ type UpdateProductItemDataRequest struct {
 
 /**物模型定义**/
 type ProductItemConfig struct {
+	Sort          int                `json:"sort"`
 	Key           string             `json:"key"`
 	Name          string             `json:"name"`
 	Code          string             `json:"code"`

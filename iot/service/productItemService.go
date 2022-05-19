@@ -65,6 +65,7 @@ func AddProductItemService(request dto.AddProductItemDataRequest) error {
 		PasswordLength: request.PasswordLength,
 	}
 	itemConfig := dto.ProductItemConfig{
+		Sort:          request.Sort,
 		Key:           utils.GetUUID(),
 		Name:          request.Name,
 		Code:          request.Code,
@@ -140,6 +141,7 @@ func UpdateProductItemService(request dto.UpdateProductItemDataRequest) error {
 		PasswordLength: request.PasswordLength,
 	}
 	itemConfig := dto.ProductItemConfig{
+		Sort:          request.Sort,
 		Key:           request.Key,
 		Name:          request.Name,
 		Code:          request.Code,
@@ -192,6 +194,7 @@ func QueryProductItemService(productId int) ([]dto.ProductItemConfigItem, error)
 	list := make([]dto.ProductItemConfigItem, 0)
 	for _, item := range itemConfigs {
 		d := dto.ProductItemConfigItem{
+			Sort:           item.Sort,
 			Key:            item.Key,
 			Code:           item.Code,
 			SourceCode:     item.SourceCode,

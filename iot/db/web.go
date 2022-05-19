@@ -23,8 +23,6 @@ func CreateTables() {
 		logrus.Errorln(err)
 	}
 	orm.ResetModelCache()
-
-	orm.Debug = true
 }
 
 func RegisterModels() {

@@ -61,6 +61,8 @@ func RegisterProductURL(r *gin.RouterGroup) {
 	r.POST("/product/update-function", updateProductFunction)                //添加产品函数
 	r.GET("/product/query-function/:productId", queryProductFunction)        //查询所有产品函数
 	r.GET("/product/detail-function/:productId/:key", detailProductFunction) //查看产品函数
+	r.GET("/product/image/:id", getImage)                                    //查看产品图片
+
 }
 
 //添加产品
@@ -72,15 +74,15 @@ func addProduct(c *gin.Context) {
 	}
 
 	//保存图片
-	imagePath := path.Join(conf.GetConf().IotImagePath, uuid.NewV4().String()+path.Ext(request.Image.Filename))
+	imageName := uuid.NewV4().String() + path.Ext(request.Image.Filename)
+	imagePath := path.Join(conf.GetConf().IotImagePath, imageName)
 	if err := c.SaveUploadedFile(request.Image, imagePath); err != nil {
-		println(imagePath)
-		logrus.Error(err)
+		logrus.Errorf("image save error:path[%s],", imagePath, err)
 		c.JSON(http.StatusOK, common.Error(err.Error(), nil))
 		return
 	}
 
-	productId, err := service.AddProductService(request, imagePath)
+	productId, err := service.AddProductService(request, imageName)
 	if err == nil {
 		c.JSON(http.StatusOK, common.Ok("保存成功", gin.H{
 			"productId": productId,
@@ -98,16 +100,17 @@ func updateProduct(c *gin.Context) {
 		return
 	}
 
-	var imagePath string
+	var imageName string
 	if request.Image != nil {
-		imagePath = path.Join(conf.GetConf().IotImagePath, uuid.NewV4().String()+path.Ext(request.Image.Filename))
+		imageName = uuid.NewV4().String() + path.Ext(request.Image.Filename)
+		imagePath := path.Join(conf.GetConf().IotImagePath, imageName)
 		if err := c.SaveUploadedFile(request.Image, imagePath); err != nil {
 			logrus.Error(err)
 			c.JSON(http.StatusOK, common.Error(err.Error(), nil))
 		}
 	}
 
-	productId, err := service.UpdateProductService(request, imagePath)
+	productId, err := service.UpdateProductService(request, imageName)
 	if err == nil {
 		c.JSON(http.StatusOK, common.Ok("保存成功", gin.H{
 			"productId": productId,
@@ -609,4 +612,15 @@ func detailProductFunction(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, common.Ok("查询成功", info))
+}
+
+func getImage(c *gin.Context) {
+	id := c.Param("id")
+	productId, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusOK, common.Error("参数错误", err.Error()))
+		return
+	}
+	file := service.GetProductImageById(productId)
+	c.String(http.StatusOK, file)
 }

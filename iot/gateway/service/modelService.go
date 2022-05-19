@@ -219,6 +219,7 @@ func convertItemConfig(items string) []model.ItemConfig {
 	list := make([]model.ItemConfig, 0)
 	for _, item := range itemConfigs {
 		d := model.ItemConfig{
+			Sort:           item.Sort,
 			Key:            item.Key,
 			Code:           item.Code,
 			Name:           item.Name,

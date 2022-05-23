@@ -7,6 +7,8 @@ import (
 
 	"koudai-box/iot/web/api"
 
+	"github.com/gin-contrib/pprof"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -22,6 +24,8 @@ func Init(port int) *http.Server {
 	gin.DefaultWriter = io.Discard
 
 	r := gin.Default()
+	pprof.Register(r) // 性能
+
 	r.MaxMultipartMemory = 32 << 20
 	r.Use(GinHead())
 	//开启跨域设置

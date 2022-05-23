@@ -29,8 +29,7 @@ func PushListener() {
 		select {
 		case msg := <-model.PushOutMsgChan:
 			go PushMsg(msg)
-		case msg := <-model.PushStatusChan:
-			logrus.Debugf("SyncPushFlag:%+v", msg)
+		case <-model.PushStatusChan:
 			go SyncPushFlag()
 		}
 	}
@@ -38,27 +37,31 @@ func PushListener() {
 
 func PushMsg(msg model.Message) {
 	logrus.Debugf("PushMsg:%+v", msg)
-	runLock.Lock()
-	defer runLock.Unlock()
 	switch msg.Type {
 	case model.Message_Type_Iot_Event:
 		_, err := PushHttpData(config.IotAlarmPushHttptUrl, "POST", msg, nil)
 		if err == nil {
+			runLock.Lock()
 			pushedAlarm = append(pushedAlarm, msg.MsgId)
+			defer runLock.Unlock()
 		} else {
 			logrus.Errorf("push alarm to http error:%+v", err)
 		}
 	case model.Message_Type_Event:
 		_, err := PushHttpData(config.IotEventPushHttptUrl, "POST", msg, nil)
 		if err == nil {
+			runLock.Lock()
 			pushedEvents = append(pushedEvents, msg.MsgId)
+			defer runLock.Unlock()
 		} else {
 			logrus.Errorf("push event to http error:%+v", err)
 		}
 	case model.Message_Type_Prop:
 		_, err := PushHttpData(config.IotPropsPushHttptUrl, "POST", msg, nil)
 		if err == nil {
+			runLock.Lock()
 			pushedPropss = append(pushedPropss, msg.MsgId)
+			defer runLock.Unlock()
 		} else {
 			logrus.Errorf("push props to http error:%+v", err)
 		}

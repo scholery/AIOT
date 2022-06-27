@@ -165,8 +165,21 @@ func DeleteOldEvents(capacity int) error {
 	return nil
 }
 
-func EventPushed(ids []string) (int64, bool) {
-	num, err := webOrm.QueryTable("event").Filter("message_id__in", ids).Update(orm.Params{"push_flag": 1})
+func EventPushed(times [2]int64, failIds []string) (int64, bool) {
+	if times[0] == 0 {
+		return 0, false
+	}
+	querySelector := webOrm.QueryTable("event")
+	cond := orm.NewCondition()
+	if len(failIds) > 0 {
+		cond = cond.AndNot("message_id__in", failIds)
+	}
+	if times[1] == 0 {
+		cond = cond.And("timestamp", times[0])
+	} else {
+		cond = cond.And("timestamp__gte", times[0]).And("timestamp__lte", times[1])
+	}
+	num, err := querySelector.SetCond(cond).Update(orm.Params{"push_flag": 1})
 	if err != nil {
 		logrus.Error(err)
 		return 0, false

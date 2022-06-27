@@ -155,6 +155,7 @@ func (httpDriver *HttpDriver) FetchProp(device *model.Device, ts int64) (interfa
 	dataMap := utils.ToMap(device)
 	dataMap["ts"] = ts
 	path := utils.ParseTpl(api.Path, dataMap)
+	dataMap = nil
 	address, err := url.Parse(fmt.Sprintf("http://%s:%d%s", httpDriver.Gateway.Ip, httpDriver.Gateway.Port, path))
 	if err != nil {
 		logrus.Error("url err:", err)
@@ -201,6 +202,7 @@ func (httpDriver *HttpDriver) FetchEvent(device *model.Device, ts int64) (interf
 	}
 	dataMap["ts"] = ts
 	path := utils.ParseTpl(urlStr, dataMap)
+	dataMap = nil
 	address, err := url.Parse(path)
 	if err != nil {
 		logrus.Errorf("api[%s]'s url err:", model.API_GetEvent, err)
@@ -227,6 +229,7 @@ func (httpDriver *HttpDriver) PostOperation(api model.ApiConfig, data interface{
 		dataMap = make(map[string]interface{})
 	}
 	path := utils.ParseTpl(urlStr, dataMap)
+	dataMap = nil
 	address, err := url.Parse(path)
 	if err != nil {
 		logrus.Errorf("api[%s]'s url err:", api.Name, err)

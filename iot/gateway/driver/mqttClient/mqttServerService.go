@@ -27,7 +27,7 @@ type MqttClient struct {
 func StartMQTT(Gateway *model.GatewayConfig) error {
 	if nil == Gateway {
 		logrus.Errorf("Gateway[%s] is not exist. ", Gateway.Key)
-		return fmt.Errorf("Gateway[%s] is not exist. ", Gateway.Key)
+		return fmt.Errorf("gateway[%s] is not exist", Gateway.Key)
 	}
 	client := MqttClient{
 		Gateway:  Gateway,
@@ -42,7 +42,7 @@ func StopMQTT(Gateway *model.GatewayConfig) error {
 	client, ok := cache_ws_Clients[Gateway.Key]
 	if !ok {
 		logrus.Errorf("Gateway[%s] is not start. ", Gateway.Key)
-		return fmt.Errorf("Gateway[%s] is not start. ", Gateway.Key)
+		return fmt.Errorf("gateway[%s] is not start", Gateway.Key)
 	}
 	client.StopConnect()
 	return nil
@@ -83,15 +83,11 @@ func (mqttClient *MqttClient) StopConnect() {
 }
 
 func (mqttClient *MqttClient) healthCheck() {
-	for {
-		if mqttClient.Shutdown == false {
-			logrus.Infoln("start healthCheck........., mqUrl:", mqttClient.Url)
-			if !mqttClient.Client.IsConnectionOpen() {
-				logrus.Infoln("start reConnect........., mqUrl:", mqttClient.Url)
-				mqttClient.StartConnect()
-			}
-		} else {
-			break
+	for !mqttClient.Shutdown {
+		logrus.Infoln("start healthCheck........., mqUrl:", mqttClient.Url)
+		if !mqttClient.Client.IsConnectionOpen() {
+			logrus.Infoln("start reConnect........., mqUrl:", mqttClient.Url)
+			mqttClient.StartConnect()
 		}
 		time.Sleep(10 * time.Second)
 	}

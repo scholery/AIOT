@@ -236,18 +236,33 @@ func doExecDevicePropBatch(driver driver.Driver, gateway *model.GatewayConfig, d
 			logrus.Errorf("doExecDevicePropBatch ExtracterProp:transformer product[%s] data error", p.Key)
 			continue
 		}
+		devicesMap, ok := proDevs[p.Id]
+		if !ok {
+			logrus.Debug("doExecDevicePropBatch 产品[%s:%s]没有设备在运行", p.Key, p.Name)
+			continue
+		}
 		//预处理返回数据
-		for key, val := range dataMap {
-			d, ok := proDevs[p.Id][key]
-			logrus.Debug("key=", key)
+		for key, dev := range devicesMap {
+			data, ok := dataMap[key]
 			if !ok {
-				logrus.Errorf("doExecDevicePropBatch ExtracterProp:device key[%s] not exist", key)
+				logrus.Errorf("doExecDevicePropBatch 设备[%s:%s]没有数据", key, dev.Name)
 				continue
 			}
-			logrus.Debug("doExecDevicePropBatch 处理数据:", key, val)
+			logrus.Debug("doExecDevicePropBatch 处理数据:", key, data)
 			//处理抽取的数据
-			PostDevicePropPull(val, driver, *d)
+			PostDevicePropPull(data, driver, *dev)
 		}
+		// for key, val := range dataMap {
+		// 	d, ok := proDevs[p.Id][key]
+		// 	logrus.Debug("key=", key)
+		// 	if !ok {
+		// 		logrus.Errorf("doExecDevicePropBatch ExtracterProp:device key[%s] not exist", key)
+		// 		continue
+		// 	}
+		// 	logrus.Debug("doExecDevicePropBatch 处理数据:", key, val)
+		// 	//处理抽取的数据
+		// 	PostDevicePropPull(val, driver, *d)
+		// }
 	}
 	return nil
 }

@@ -32,17 +32,17 @@ type WsClient struct {
 
 // var WsRequestChan = make(chan string, 128)
 func (that *WsClient) ReceiveServerCommand(api string, conn *websocket.Conn) {
-	wsIp := conn.RemoteAddr().String()
-	wsUrl := fmt.Sprintf("ws://%s", wsIp)
-	defer func(url string) {
+	//wsIp := conn.RemoteAddr().String()
+	//wsUrl := fmt.Sprintf("ws://%s", wsIp)
+	defer func() {
 		err := recover()
 		if err != nil {
 			logrus.Error(err)
 		}
 		logrus.Warnf("websocket[%s] panic, will restart after 5 seconds", that.Gateway.Key)
 		that.abortAndReconnectServer(that.Gateway)
-	}(wsUrl)
-	for {
+	}()
+	for !that.Shutdown {
 		i := 0
 		for conn == nil {
 			time.Sleep(1 * time.Second)
